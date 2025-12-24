@@ -1,14 +1,14 @@
-# Chronicle
+# `Sage` (*Chronicle*)
 
 > **A local-first, event-sourced decision & execution journal for developers.**
 
-Chronicle captures not just *what* you did—but **why** you did it.
+`Sage` captures not just *what* you did—but **why** you did it.
 
 It is an append-only, time-aware personal ledger for developers who want to preserve context, reasoning, and evolution across projects.
 
 ---
 
-## Why Chronicle?
+## Why `Sage`?
 
 Code remembers *changes*.  
 Task managers remember *intent*.  
@@ -23,13 +23,13 @@ After weeks or months, developers inevitably ask:
 - *What alternatives were rejected?*
 - *What changed my mind?*
 
-Chronicle exists to answer those questions—locally, permanently, and without friction.
+`Sage` exists to answer those questions—locally, permanently, and without friction.
 
 ---
 
-## What Is Chronicle?
+## What Is `Sage`?
 
-Chronicle is a **local-first CLI + TUI tool** that records developer actions as immutable events and lets you replay, inspect, and query your personal development history across time.
+`Sage` is a **local-first CLI + TUI tool** that records developer actions as immutable events and lets you replay, inspect, and query your personal development history across time.
 
 Think:
 
@@ -61,14 +61,14 @@ Every event is timestamped and replayable.
 
 ---
 
-### ⚡ Chronicle CLI
+### ⚡ `Sage` CLI
 Minimal, expressive commands:
 
 ```bash
-chronicle log "Refactored auth middleware"
-chronicle decide "Use Go instead of Node for websocket server"
-chronicle note "Latency dropped after removing Redis"
-chronicle timeline --last 7d
+`Sage` log "Refactored auth middleware"
+`Sage` decide "Use Go instead of Node for websocket server"
+`Sage` note "Latency dropped after removing Redis"
+`Sage` timeline --last 7d
 ````
 
 ---
@@ -78,11 +78,11 @@ chronicle timeline --last 7d
 Ask questions of the past:
 
 ```bash
-chronicle why auth
-chronicle state --at 2025-01-10
+`Sage` why auth
+`Sage` state --at 2025-01-10
 ```
 
-Chronicle reconstructs:
+`Sage` reconstructs:
 
 * decisions made
 * notes taken
@@ -93,10 +93,10 @@ Chronicle reconstructs:
 
 ### 📁 Project-Scoped Journals
 
-Chronicles are automatically scoped per project:
+`Sage`s are automatically scoped per project:
 
 ```
-~/.chronicle/
+~/.`Sage`/
 ├── nargis/
 ├── rig/
 ├── camellia/
@@ -120,7 +120,7 @@ An interactive timeline built with a Go TUI stack:
 
 ### 🔗 Git Integration (Optional)
 
-Chronicle can:
+`Sage` can:
 
 * associate events with commits
 * run via git hooks
@@ -151,7 +151,7 @@ Chronicle can:
 * **Interfaces:** CLI (default), TUI (optional)
 * **Scope:** Per-project, local-only
 
-Chronicle intentionally avoids:
+`Sage` intentionally avoids:
 
 * mutable state
 * remote sync
@@ -161,12 +161,12 @@ Chronicle intentionally avoids:
 
 ## Installation
 
-> Chronicle is currently in active development.
+> `Sage` is currently in active development.
 
 Once released:
 
 ```bash
-go install github.com/divijg19/chronicle@latest
+go install github.com/divijg19/`Sage`@latest
 ```
 
 Or download a prebuilt binary from Releases.
@@ -211,15 +211,15 @@ Or download a prebuilt binary from Releases.
 
 ## Philosophy
 
-Chronicle treats **developer cognition** as a first-class artifact.
+`Sage` treats **developer cognition** as a first-class artifact.
 
-Building developer understanding is compounding on your choices, and Chronicle seeks to preserve this.
+Building developer understanding is compounding on your choices, and `Sage` seeks to preserve this.
 
 ---
 
 ## Non-Goals
 
-Chronicle is **not**:
+`Sage` is **not**:
 
 * a task manager
 * a note-taking app
@@ -232,7 +232,7 @@ It complements existing tools—it does not replace them.
 
 ## Contributing
 
-Chronicle is opinionated by design, but contributions are welcome.
+`Sage` is opinionated by design, but contributions are welcome.
 
 Before contributing:
 
