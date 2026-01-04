@@ -1,10 +1,10 @@
 # `Sage` (*Chronicle*)
 
-> **A local-first, event-sourced decision & execution journal for developers.**
+> **A local-first, event-sourced developer cognition engine for capturing decisions, reasoning, and meaning over time.**
 
 `Sage` captures not just *what* you did—but **why** you did it.
 
-It is an append-only, time-aware personal ledger for developers who want to preserve context, reasoning, and evolution across projects.
+It is an append-only, time-aware personal system for developers who want to preserve context, reasoning, and conceptual understanding across projects.
 
 ---
 
@@ -23,52 +23,77 @@ After weeks or months, developers inevitably ask:
 - *What alternatives were rejected?*
 - *What changed my mind?*
 
-`Sage` exists to answer those questions—locally, permanently, and without friction.
+`Sage` exists to answer those questions—**locally, permanently, and without friction**.
 
 ---
 
 ## What Is `Sage`?
 
-`Sage` is a **local-first CLI + TUI tool** that records developer actions as immutable events and lets you replay, inspect, and query your personal development history across time.
+`Sage` is a **local-first CLI + TUI developer cognition engine** that records work as immutable events and derives a **time-aware semantic graph** of concepts, decisions, and relationships across your code, docs, and projects.
 
 Think:
 
-> **Git + journaling + event sourcing — for humans.**
+> **Git + journaling + event sourcing + semantic context — for humans.**
 
 ---
 
 ## Core Principles
 
-- **Local-first** — No cloud, no accounts, no telemetry
-- **Append-only** — History is immutable
-- **Time-aware** — State can be reconstructed at any point
-- **Low-friction** — Designed to be used daily
-- **Human-centric** — Built for reasoning, not metrics
+- **Local-first** — No cloud, no accounts, no telemetry  
+- **Append-only** — History is immutable  
+- **Time-aware** — Past state can be reconstructed  
+- **Derived meaning** — Graphs are projections, not truth  
+- **Low-friction** — Designed for daily use  
+- **Human-centric** — Built for reasoning, not metrics  
 
 ---
 
-## Key Features
+## Key Capabilities
 
-### 🧾 Event-Sourced Timeline
+### 🧾 Event-Sourced Timeline (Source of Truth)
+
 All interactions are stored as immutable events:
+
 - decisions
 - notes
 - experiments
+- reflections
 - outcomes
 - commands (optional)
 
-Every event is timestamped and replayable.
+Every event is timestamped, durable, and replayable.
+
+---
+
+### 🧠 Semantic Graph (Derived Cognition Layer)
+
+From the event log, `Sage` incrementally builds a **local semantic graph** of:
+
+- **Concepts** (e.g. `auth`, `postgres`, `event-sourcing`)
+- **Decisions** (explicit architectural or technical choices)
+- **Artifacts** (modules, files, repos, docs)
+- **Relationships** (`affects`, `depends_on`, `supersedes`, `references`)
+
+> **Events are the source of truth.  
+> The graph is a projection.**
+
+This ensures:
+- explainability
+- reversibility
+- time-aware reasoning
+- zero hallucination
 
 ---
 
 ### ⚡ `Sage` CLI
+
 Minimal, expressive commands:
 
 ```bash
-`Sage` log "Refactored auth middleware"
-`Sage` decide "Use Go instead of Node for websocket server"
-`Sage` note "Latency dropped after removing Redis"
-`Sage` timeline --last 7d
+sage log "Refactored auth middleware"
+sage decide "Use Go instead of Node for websocket server" --about auth,backend
+sage note "Latency dropped after removing Redis"
+sage timeline --last 7d
 ````
 
 ---
@@ -78,28 +103,31 @@ Minimal, expressive commands:
 Ask questions of the past:
 
 ```bash
-`Sage` why auth
-`Sage` state --at 2025-01-10
+sage why auth
+sage state --at 2025-01-10
+sage impact websocket
 ```
 
 `Sage` reconstructs:
 
 * decisions made
-* notes taken
-* relevant events
+* concepts involved
+* related artifacts
 * project context at that moment
+
+All answers link back to concrete events.
 
 ---
 
 ### 📁 Project-Scoped Journals
 
-`Sage`s are automatically scoped per project:
+`Sage` automatically scopes cognition per project:
 
 ```
-~/.`Sage`/
+~/.sage/
 ├── nargis/
 ├── rig/
-├── camellia/
+├── juniper/
 └── global/
 ```
 
@@ -109,12 +137,13 @@ No manual setup required.
 
 ### 🖥️ Optional TUI (Terminal UI)
 
-An interactive timeline built with a Go TUI stack:
+An interactive terminal interface:
 
-* vertical chronological view
-* filter by event type
+* vertical timeline + graph view
+* filter by event or concept
 * fuzzy search
 * collapsible days
+* keyboard-first navigation
 
 ---
 
@@ -124,7 +153,7 @@ An interactive timeline built with a Go TUI stack:
 
 * associate events with commits
 * run via git hooks
-* annotate decisions near code changes
+* anchor decisions near code changes
 
 ---
 
@@ -136,7 +165,7 @@ An interactive timeline built with a Go TUI stack:
   "timestamp": "2025-03-02T21:41:00Z",
   "type": "decision",
   "project": "nargis",
-  "context": "backend",
+  "concepts": ["auth", "storage"],
   "content": "Switched from Redis to Postgres due to durability concerns"
 }
 ```
@@ -146,16 +175,18 @@ An interactive timeline built with a Go TUI stack:
 ## Architecture Overview
 
 * **Language:** Go
+* **Core Model:** Event sourcing (append-only log)
+* **Derived Model:** Semantic graph (rebuildable)
 * **Storage:** SQLite or BadgerDB
-* **Model:** Event sourcing (append-only log)
 * **Interfaces:** CLI (default), TUI (optional)
 * **Scope:** Per-project, local-only
 
 `Sage` intentionally avoids:
 
-* mutable state
+* mutable global state
 * remote sync
 * proprietary formats
+* opaque inference
 
 ---
 
@@ -166,7 +197,7 @@ An interactive timeline built with a Go TUI stack:
 Once released:
 
 ```bash
-go install github.com/divijg19/`Sage`@latest
+go install github.com/divijg19/sage@latest
 ```
 
 Or download a prebuilt binary from Releases.
@@ -179,6 +210,8 @@ Or download a prebuilt binary from Releases.
 | ----------------- | ------ |
 | Core event model  | ✅      |
 | CLI logging       | ✅      |
+| Concept tagging   | 🚧     |
+| Semantic graph    | 🚧     |
 | Timeline queries  | 🚧     |
 | Time-travel state | 🚧     |
 | TUI               | ⏳      |
@@ -188,22 +221,28 @@ Or download a prebuilt binary from Releases.
 
 ## Roadmap
 
-### v0.1
+### v0.1 — Foundation
 
 * append-only event store
 * CLI logging & querying
 * project scoping
 * markdown export
 
-### v0.2
+### v0.2 — Cognition
 
-* TUI timeline
-* git integration
-* structured decisions
+* explicit concept tagging
+* semantic graph projection
+* `sage why`, `sage impact`
 
-### v0.3+
+### v0.3 — Ergonomics
 
-* AI summarization (local / optional)
+* TUI
+* fuzzy search
+* git hooks
+
+### Future
+
+* local AI summarization (optional)
 * decision embeddings
 * knowledge graph export
 
@@ -213,7 +252,10 @@ Or download a prebuilt binary from Releases.
 
 `Sage` treats **developer cognition** as a first-class artifact.
 
-Building developer understanding is compounding on your choices, and `Sage` seeks to preserve this.
+Code changes.
+Understanding compounds.
+
+`Sage` preserves the latter.
 
 ---
 
@@ -223,7 +265,7 @@ Building developer understanding is compounding on your choices, and `Sage` seek
 
 * a task manager
 * a note-taking app
-* a replacement for Git
+* a Git replacement
 * a cloud service
 
 It complements existing tools—it does not replace them.
@@ -232,7 +274,7 @@ It complements existing tools—it does not replace them.
 
 ## Contributing
 
-`Sage` is opinionated by design, but contributions are welcome.
+`Sage` is opinionated by design.
 
 Before contributing:
 
@@ -240,7 +282,7 @@ Before contributing:
 * respect immutability
 * avoid feature creep
 
-Open an issue to discuss major changes.
+Open an issue before major changes.
 
 ---
 
