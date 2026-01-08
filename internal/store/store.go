@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/divijg19/Sage/internal/event"
+	"github.com/divijg19/sage/internal/event"
 	_ "modernc.org/sqlite"
 )
 

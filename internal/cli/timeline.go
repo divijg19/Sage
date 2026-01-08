@@ -3,9 +3,9 @@ package cli
 import (
 	"fmt"
 
-	"github.com/divijg19/Sage/internal/event"
-	"github.com/divijg19/Sage/internal/project"
-	"github.com/divijg19/Sage/internal/store"
+	"github.com/divijg19/sage/internal/event"
+	"github.com/divijg19/sage/internal/project"
+	"github.com/divijg19/sage/internal/store"
 	"github.com/spf13/cobra"
 )
 

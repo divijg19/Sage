@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/divijg19/Sage/internal/cli"
+	"github.com/divijg19/sage/internal/cli"
 )
 
 func main() {

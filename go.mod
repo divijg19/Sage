@@ -1,4 +1,4 @@
-module github.com/divijg19/Sage
+module github.com/divijg19/sage
 
 go 1.25.5
 
