@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/divijg19/sage/internal/event"
 	"github.com/divijg19/sage/internal/project"
@@ -42,12 +43,22 @@ var timelineCmd = &cobra.Command{
 
 func printEvent(e event.Event) {
 	ts := e.Timestamp.Format("2006-01-02 15:04")
-	fmt.Printf(
-		"[%s] %-6s %s\n",
-		ts,
-		e.Type,
-		e.Content,
-	)
+	if len(e.Concepts) > 0 {
+		fmt.Printf(
+			"[%s] %-6s (%s) %s\n",
+			ts,
+			e.Type,
+			strings.Join(e.Concepts, ","),
+			e.Content,
+		)
+	} else {
+		fmt.Printf(
+			"[%s] %-6s %s\n",
+			ts,
+			e.Type,
+			e.Content,
+		)
+	}
 }
 
 func init() {

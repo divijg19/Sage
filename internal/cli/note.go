@@ -35,6 +35,7 @@ var noteCmd = &cobra.Command{
 			Type:      event.NoteEvent,
 			Project:   projectName,
 			Content:   message,
+			Concepts:  parseConcepts(conceptsFlag),
 		}
 
 		if err := s.Append(e); err != nil {
@@ -47,5 +48,11 @@ var noteCmd = &cobra.Command{
 }
 
 func init() {
+	noteCmd.Flags().StringSliceVar(
+		&conceptsFlag,
+		"concepts",
+		nil,
+		"comma-separated list of concepts",
+	)
 	rootCmd.AddCommand(noteCmd)
 }
