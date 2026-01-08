@@ -18,7 +18,7 @@ var stateCmd = &cobra.Command{
 	Short: "Reconstruct project state at a point in time",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// 1. Parse timestamp
-		t, err := time.Parse(time.RFC3339, stateAt)
+		t, err := parseTime(stateAt)
 		if err != nil {
 			return fmt.Errorf("invalid time format, use RFC3339")
 		}
@@ -60,6 +60,35 @@ func replay(events []event.Event) {
 			fmt.Printf("LOG: %s\n", e.Content)
 		}
 	}
+}
+
+func parseTime(input string) (time.Time, error) {
+	// 1. Try full RFC3339
+	if t, err := time.Parse(time.RFC3339, input); err == nil {
+		return t, nil
+	}
+
+	// 2. Try local time without timezone
+	if t, err := time.ParseInLocation(
+		"2006-01-02T15:04",
+		input,
+		time.Local,
+	); err == nil {
+		return t, nil
+	}
+
+	// 3. Try date only
+	if t, err := time.ParseInLocation(
+		"2006-01-02",
+		input,
+		time.Local,
+	); err == nil {
+		return t, nil
+	}
+
+	return time.Time{}, fmt.Errorf(
+		"invalid time format. Use RFC3339 or YYYY-MM-DDTHH:MM",
+	)
 }
 
 
