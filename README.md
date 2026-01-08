@@ -227,6 +227,7 @@ Or download a prebuilt binary from Releases.
 - CLI logging & querying
 - project scoping
 - timeline & time-travel (`state --at`)
+- log / note / decide commands
 
 ### v0.2 — Structure
 

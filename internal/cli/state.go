@@ -44,7 +44,7 @@ var stateCmd = &cobra.Command{
 		// 5. Replay & print
 		replay(events)
 		return nil
-},
+	},
 }
 
 func replay(events []event.Event) {
@@ -90,7 +90,6 @@ func parseTime(input string) (time.Time, error) {
 		"invalid time format. Use RFC3339 or YYYY-MM-DDTHH:MM",
 	)
 }
-
 
 func init() {
 	stateCmd.Flags().StringVar(
