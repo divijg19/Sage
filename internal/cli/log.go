@@ -38,6 +38,7 @@ var logCmd = &cobra.Command{
 			Type:      event.LogEvent,
 			Project:   projectName,
 			Content:   message,
+			Concepts:  parseConcepts(conceptsFlag),
 		}
 
 		// 4. Append event
@@ -51,5 +52,11 @@ var logCmd = &cobra.Command{
 }
 
 func init() {
+	logCmd.Flags().StringSliceVar(
+		&conceptsFlag,
+		"concepts",
+		nil,
+		"comma-separated list of concepts",
+	)
 	rootCmd.AddCommand(logCmd)
 }
