@@ -12,7 +12,6 @@ import (
 	"github.com/divijg19/Sage/internal/store"
 )
 
-
 var logCmd = &cobra.Command{
 	Use:   "log <message>",
 	Short: "Log a development event",
@@ -48,7 +47,7 @@ var logCmd = &cobra.Command{
 
 		fmt.Println("logged:", message)
 		return nil
-},
+	},
 }
 
 func init() {
