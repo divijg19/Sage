@@ -59,7 +59,7 @@ func (s *Store) Append(e event.Event) error {
 		query,
 		e.ID,
 		e.Timestamp.Format(time.RFC3339),
-		e.Type,
+		e.Kind,
 		e.Project,
 		string(data),
 	)
@@ -130,4 +130,30 @@ func (s *Store) ListUntil(t time.Time) ([]event.Event, error) {
 	}
 
 	return events, rows.Err()
+}
+
+func (s *Store) Latest(project string) (*event.Event, error) {
+	query := `
+	SELECT data
+	FROM events
+	WHERE project = ?
+	ORDER BY timestamp DESC
+	LIMIT 1
+	`
+
+	var raw string
+	err := s.db.QueryRow(query, project).Scan(&raw)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var e event.Event
+	if err := json.Unmarshal([]byte(raw), &e); err != nil {
+		return nil, err
+	}
+
+	return &e, nil
 }
