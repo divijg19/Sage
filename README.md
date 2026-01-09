@@ -312,7 +312,7 @@ Or download a prebuilt binary from Releases.
 | Core event model  | ✅     |
 | `sage add`        | ✅     |
 | Templates         | ✅     |
-| Tags              | ✅     |
+| Tags              |        |
 | Timeline          | ✅     |
 | State (`--at`)    | ✅     |
 | Semantic graph    | ⏳     |
@@ -323,31 +323,32 @@ Or download a prebuilt binary from Releases.
 
 ## Roadmap
 
-### v0.1 — Foundation
+### v0.1 — Foundation ✅
 
 - append-only event store
 - CLI logging & querying
 - project scoping
 - timeline & time-travel (`state --at`)
 
-### v0.2 — Structure
+### v0.2 — Structure ✅
 
 - stabilize storage + project scoping
 
-### v0.3 — Stabilization
+### v0.3 — Stabilization ✅
 
 - hardened editor-centric `add` flow (no empty/noisy entries)
 - templates by name or numeric id
-- tags for organization and filtering
 - clean, trustworthy timeline summaries
+- editor config
 
 ### v0.4 — Cognition
 
+- sage view
+- tags for organization and filtering
 - semantic graph projection (derived from events)
-- concept → decision → artifact relationships
--- derived projections (concept/decision/artifact relationships)
+- derived projections from concept → decision → artifact relationships
 
-### v0.4 — Ergonomics
+### v0.5 — Ergonomics
 
 - TUI (timeline + graph views)
 - fuzzy search
@@ -365,9 +366,9 @@ Or download a prebuilt binary from Releases.
 
 `Sage` treats **developer cognition** as a first-class artifact.
 
-Code changes, understanding compounds. Building developer understanding is compounding on your choices, and `Sage` seeks to preserve this.
+Code changes, understanding compounds. `Sage` preserves the latter.
 
-`Sage` preserves the latter.
+Building developer understanding is compounding on your choices, and `Sage` seeks to preserve this.
 
 ---
 
