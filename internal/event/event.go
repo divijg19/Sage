@@ -2,20 +2,24 @@ package event
 
 import "time"
 
-type EventType string
+// EntryKind represents the semantic kind of an entry.
+type EntryKind string
 
 const (
-	LogEvent    EventType = "log"
-	DecideEvent EventType = "decide"
-	NoteEvent   EventType = "note"
+	RecordKind   EntryKind = "record"
+	DecisionKind EntryKind = "decision"
 )
 
+// Event represents a single immutable cognitive entry.
 type Event struct {
-	ID        string            `json:"id"`
-	Timestamp time.Time         `json:"timestamp"`
-	Type      EventType         `json:"type"`
-	Project   string            `json:"project"`
-	Concepts  []string          `json:"concepts,omitempty"`
-	Content   string            `json:"content"`
-	Metadata  map[string]string `json:"metadata,omitempty"`
+	ID        string    `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+	Project   string    `json:"project"`
+
+	Kind    EntryKind `json:"kind"`
+	Title   string    `json:"title"`
+	Content string    `json:"content"`
+
+	Tags     []string          `json:"tags,omitempty"`
+	Metadata map[string]string `json:"metadata,omitempty"`
 }
