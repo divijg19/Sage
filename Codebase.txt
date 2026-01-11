@@ -6,12 +6,16 @@ go.sum
 internal/cli/cmd_add.go
 internal/cli/cmd_editor.go
 internal/cli/cmd_state.go
+internal/cli/cmd_tag.go
 internal/cli/cmd_timeline.go
+internal/cli/cmd_view.go
 internal/cli/config.go
+internal/cli/config_tags_test.go
 internal/cli/env_paths.go
 internal/cli/flow_add_entry.go
 internal/cli/flow_add_entry_test.go
 internal/cli/flow_template.go
+internal/cli/global_store.go
 internal/cli/io_editor.go
 internal/cli/io_editor_test.go
 internal/cli/io_input.go

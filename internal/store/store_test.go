@@ -52,8 +52,11 @@ func TestStore_AppendListLatest(t *testing.T) {
 	if len(all) != 2 {
 		t.Fatalf("expected 2 events, got %d", len(all))
 	}
+	if all[0].Seq != 1 || all[1].Seq != 2 {
+		t.Fatalf("expected seq 1,2 got %d,%d", all[0].Seq, all[1].Seq)
+	}
 
-	latest, err := s.Latest("proj")
+	latest, err := s.Latest()
 	if err != nil {
 		t.Fatalf("Latest: %v", err)
 	}
@@ -66,6 +69,20 @@ func TestStore_AppendListLatest(t *testing.T) {
 	if latest.Title != "t2" {
 		t.Fatalf("expected latest title t2, got %q", latest.Title)
 	}
+
+	if err := s.UpdateTagsBySeq(1, []string{"x", "y"}); err != nil {
+		t.Fatalf("UpdateTagsBySeq: %v", err)
+	}
+	g, err := s.GetBySeq(1)
+	if err != nil {
+		t.Fatalf("GetBySeq: %v", err)
+	}
+	if g == nil {
+		t.Fatalf("expected entry")
+	}
+	if len(g.Tags) != 2 || g.Tags[0] != "x" || g.Tags[1] != "y" {
+		t.Fatalf("expected updated tags [x y], got %v", g.Tags)
+	}
 }
 
 func TestStore_Latest_Empty(t *testing.T) {
@@ -77,7 +94,7 @@ func TestStore_Latest_Empty(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 
-	latest, err := s.Latest("proj")
+	latest, err := s.Latest()
 	if err != nil {
 		t.Fatalf("Latest: %v", err)
 	}

@@ -3,6 +3,9 @@ package store
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/divijg19/sage/internal/event"
@@ -27,19 +30,83 @@ func Open(path string) (*Store, error) {
 }
 
 func migrate(db *sql.DB) error {
-	schema := `
-	CREATE TABLE IF NOT EXISTS events (
-		id TEXT PRIMARY KEY,
+	// v2 schema adds a numeric, user-facing id (seq).
+	// We migrate existing v1 DBs by copying events in stable chronological order.
+	if ok, err := hasColumn(db, "events", "seq"); err != nil {
+		return err
+	} else if ok {
+		return ensureIndexes(db)
+	}
+
+	// Create v2 table and copy data.
+	createV2 := `
+	CREATE TABLE IF NOT EXISTS events_v2 (
+		seq INTEGER PRIMARY KEY AUTOINCREMENT,
+		id TEXT NOT NULL UNIQUE,
 		timestamp TEXT NOT NULL,
 		type TEXT NOT NULL,
 		project TEXT NOT NULL,
 		data TEXT NOT NULL
 	);
+	`
+	if _, err := db.Exec(createV2); err != nil {
+		return err
+	}
 
+	// Copy from v1 if it exists.
+	// Order by timestamp then id for deterministic seq assignment.
+	copySQL := `
+	INSERT INTO events_v2 (id, timestamp, type, project, data)
+	SELECT id, timestamp, type, project, data
+	FROM events
+	ORDER BY timestamp ASC, id ASC;
+	`
+	_, _ = db.Exec(copySQL) // ignore if v1 table doesn't exist
+
+	// Swap tables.
+	// If v1 didn't exist, events_v2 is our empty table.
+	if _, err := db.Exec(`DROP TABLE IF EXISTS events;`); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`ALTER TABLE events_v2 RENAME TO events;`); err != nil {
+		return err
+	}
+
+	return ensureIndexes(db)
+}
+
+func hasColumn(db *sql.DB, table string, column string) (bool, error) {
+	q := fmt.Sprintf("PRAGMA table_info(%s);", table)
+	rows, err := db.Query(q)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cid int
+		var name string
+		var typ string
+		var notnull int
+		var dflt sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			return false, err
+		}
+		if name == column {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
+}
+
+func ensureIndexes(db *sql.DB) error {
+	schema := `
 	CREATE INDEX IF NOT EXISTS idx_events_time
 	ON events(timestamp);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_events_id
+	ON events(id);
 	`
-
 	_, err := db.Exec(schema)
 	return err
 }
@@ -69,9 +136,9 @@ func (s *Store) Append(e event.Event) error {
 
 func (s *Store) List() ([]event.Event, error) {
 	query := `
-	SELECT data
+	SELECT seq, data
 	FROM events
-	ORDER BY timestamp ASC
+	ORDER BY seq ASC
 	`
 
 	rows, err := s.db.Query(query)
@@ -83,8 +150,9 @@ func (s *Store) List() ([]event.Event, error) {
 	var events []event.Event
 
 	for rows.Next() {
+		var seq int64
 		var raw string
-		if err := rows.Scan(&raw); err != nil {
+		if err := rows.Scan(&seq, &raw); err != nil {
 			return nil, err
 		}
 
@@ -92,6 +160,7 @@ func (s *Store) List() ([]event.Event, error) {
 		if err := json.Unmarshal([]byte(raw), &e); err != nil {
 			return nil, err
 		}
+		e.Seq = seq
 
 		events = append(events, e)
 	}
@@ -101,10 +170,10 @@ func (s *Store) List() ([]event.Event, error) {
 
 func (s *Store) ListUntil(t time.Time) ([]event.Event, error) {
 	query := `
-	SELECT data
+	SELECT seq, data
 	FROM events
 	WHERE timestamp <= ?
-	ORDER BY timestamp ASC
+	ORDER BY seq ASC
 	`
 
 	rows, err := s.db.Query(query, t.Format(time.RFC3339))
@@ -116,8 +185,9 @@ func (s *Store) ListUntil(t time.Time) ([]event.Event, error) {
 	var events []event.Event
 
 	for rows.Next() {
+		var seq int64
 		var raw string
-		if err := rows.Scan(&raw); err != nil {
+		if err := rows.Scan(&seq, &raw); err != nil {
 			return nil, err
 		}
 
@@ -125,6 +195,7 @@ func (s *Store) ListUntil(t time.Time) ([]event.Event, error) {
 		if err := json.Unmarshal([]byte(raw), &e); err != nil {
 			return nil, err
 		}
+		e.Seq = seq
 
 		events = append(events, e)
 	}
@@ -132,17 +203,17 @@ func (s *Store) ListUntil(t time.Time) ([]event.Event, error) {
 	return events, rows.Err()
 }
 
-func (s *Store) Latest(project string) (*event.Event, error) {
+func (s *Store) Latest() (*event.Event, error) {
 	query := `
-	SELECT data
+	SELECT seq, data
 	FROM events
-	WHERE project = ?
-	ORDER BY timestamp DESC
+	ORDER BY seq DESC
 	LIMIT 1
 	`
 
+	var seq int64
 	var raw string
-	err := s.db.QueryRow(query, project).Scan(&raw)
+	err := s.db.QueryRow(query).Scan(&seq, &raw)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -154,6 +225,127 @@ func (s *Store) Latest(project string) (*event.Event, error) {
 	if err := json.Unmarshal([]byte(raw), &e); err != nil {
 		return nil, err
 	}
+	e.Seq = seq
 
 	return &e, nil
+}
+
+func (s *Store) Count() (int, error) {
+	row := s.db.QueryRow(`SELECT COUNT(*) FROM events;`)
+	var n int
+	if err := row.Scan(&n); err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
+func (s *Store) GetBySeq(seq int64) (*event.Event, error) {
+	query := `
+	SELECT seq, data
+	FROM events
+	WHERE seq = ?
+	LIMIT 1
+	`
+
+	var gotSeq int64
+	var raw string
+	err := s.db.QueryRow(query, seq).Scan(&gotSeq, &raw)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var e event.Event
+	if err := json.Unmarshal([]byte(raw), &e); err != nil {
+		return nil, err
+	}
+	e.Seq = gotSeq
+	return &e, nil
+}
+
+func (s *Store) UpdateTagsBySeq(seq int64, tags []string) error {
+	e, err := s.GetBySeq(seq)
+	if err != nil {
+		return err
+	}
+	if e == nil {
+		return fmt.Errorf("no entry with id %d", seq)
+	}
+
+	e.Tags = tags
+	b, err := json.Marshal(e)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.db.Exec(`UPDATE events SET data = ? WHERE seq = ?;`, string(b), seq)
+	return err
+}
+
+// ReadEventsFromDB reads events from a DB file without migrating it.
+// This is used for importing legacy per-directory stores.
+func ReadEventsFromDB(path string) ([]event.Event, error) {
+	db, err := sql.Open("sqlite", "file:"+path+"?mode=ro")
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	rows, err := db.Query(`SELECT data FROM events ORDER BY timestamp ASC, id ASC;`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []event.Event
+	for rows.Next() {
+		var raw string
+		if err := rows.Scan(&raw); err != nil {
+			return nil, err
+		}
+		var e event.Event
+		if err := json.Unmarshal([]byte(raw), &e); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
+func isUniqueConstraintErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "UNIQUE constraint failed") || strings.Contains(msg, "constraint failed")
+}
+
+// ImportEvents appends events into this store in deterministic order.
+// Duplicate IDs are skipped.
+func (s *Store) ImportEvents(events []event.Event) (int, error) {
+	if len(events) == 0 {
+		return 0, nil
+	}
+	// Sort for deterministic seq assignment.
+	sort.Slice(events, func(i, j int) bool {
+		if events[i].Timestamp.Equal(events[j].Timestamp) {
+			return events[i].ID < events[j].ID
+		}
+		return events[i].Timestamp.Before(events[j].Timestamp)
+	})
+
+	inserted := 0
+	for _, e := range events {
+		if err := s.Append(e); err != nil {
+			// If already present, skip.
+			if isUniqueConstraintErr(err) {
+				continue
+			}
+			return inserted, err
+		}
+		inserted++
+	}
+	return inserted, nil
 }

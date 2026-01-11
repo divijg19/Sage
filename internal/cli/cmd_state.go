@@ -2,20 +2,20 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/divijg19/sage/internal/event"
-	"github.com/divijg19/sage/internal/project"
-	"github.com/divijg19/sage/internal/store"
 )
 
 var stateAt string
+var stateTags []string
 
 var stateCmd = &cobra.Command{
 	Use:   "state",
-	Short: "Reconstruct project state at a point in time",
+	Short: "Reconstruct state at a point in time",
 	Long: "Replays the event log up to a given timestamp and prints a concise view\n" +
 		"of decisions and contextual records.\n\n" +
 		"Use --at with RFC3339, local datetime (YYYY-MM-DDTHH:MM), or date-only (YYYY-MM-DD).",
@@ -29,22 +29,28 @@ var stateCmd = &cobra.Command{
 			return fmt.Errorf("invalid time format, use RFC3339 or YYYY-MM-DD")
 		}
 
-		// 2. Detect project
-		_, dbPath, err := project.Detect()
+		// 2. Open global store
+		s, err := openGlobalStore()
 		if err != nil {
 			return err
 		}
 
-		// 3. Open store
-		s, err := store.Open(dbPath)
-		if err != nil {
-			return err
-		}
-
-		// 4. Load events up to time
+		// 3. Load events up to time
 		events, err := s.ListUntil(t)
 		if err != nil {
 			return err
+		}
+
+		// Optional tag filter.
+		want := parseTags(stateTags)
+		if len(want) > 0 {
+			filtered := make([]event.Event, 0, len(events))
+			for _, e := range events {
+				if eventHasAnyTag(e, want) {
+					filtered = append(filtered, e)
+				}
+			}
+			events = filtered
 		}
 
 		// 5. Replay & print
@@ -59,14 +65,22 @@ func replayState(events []event.Event, at time.Time) {
 	fmt.Println("Decisions:")
 	for _, e := range events {
 		if e.Kind == event.DecisionKind {
-			fmt.Printf("- %s\n", e.Title)
+			title := strings.TrimSpace(e.Title)
+			if title == "" {
+				title = "(untitled)"
+			}
+			fmt.Printf("- [%d] %s\n", e.Seq, title)
 		}
 	}
 
 	fmt.Println("\nContext:")
 	for _, e := range events {
 		if e.Kind == event.RecordKind {
-			fmt.Printf("- %s\n", e.Title)
+			title := strings.TrimSpace(e.Title)
+			if title == "" {
+				title = "(untitled)"
+			}
+			fmt.Printf("- [%d] %s\n", e.Seq, title)
 		}
 	}
 }
@@ -105,6 +119,7 @@ func init() {
 		"",
 		"timestamp (RFC3339 or YYYY-MM-DD)",
 	)
+	stateCmd.Flags().StringArrayVar(&stateTags, "tags", nil, "filter replay by tags (repeatable or comma-separated)")
 	stateCmd.MarkFlagRequired("at")
 	rootCmd.AddCommand(stateCmd)
 }

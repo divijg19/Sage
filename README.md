@@ -4,7 +4,7 @@
 
 `Sage` captures not just _what_ you did—but **why** you did it.
 
-It is an append-only, time-aware personal system for developers who want to preserve context, reasoning, conceptual understanding and evolution across projects.
+It is a time-aware personal system for developers who want to preserve context, reasoning, and conceptual understanding over time.
 
 ---
 
@@ -143,6 +143,36 @@ sage timeline --tags auth
 sage timeline --tags auth,backend
 ```
 
+Timeline output includes a **numeric entry ID** (the first bracket). Use it with:
+
+```bash
+sage view 42
+```
+
+### View past entries
+
+```bash
+sage view 42
+```
+
+This prints the full entry (timestamp, kind, title, tags, content).
+
+### Tags
+
+Tags are optional strings used for filtering and finding entries.
+
+```bash
+# List tags + counts
+sage tag
+
+# Tag an entry id with a tag (comma-separated supported)
+sage tag 42 "auth"
+sage tag 42 "auth,backend"
+
+# Show all entries with a tag
+sage tag "auth"
+```
+
 ### State reconstruction
 
 ```bash
@@ -156,7 +186,7 @@ sage state --at 2026-01-09T21:30
 
 ### 🧾 Event-Sourced Timeline (Source of Truth)
 
-All entries are stored as immutable events:
+All entries are stored as events (entry content is append-only; tags are optional metadata for filtering):
 
 - decisions
 - notes
@@ -215,23 +245,24 @@ sage state --at 2025-01-10
 
 - decisions made
 - notes taken
--- project context at that moment
+- relevant context at that moment
 
 All answers link back to concrete events.
 
 ---
 
-### 📁 Project-Scoped Journals
+### 📁 Global Journal
 
-Entries are automatically scoped per project:
+All entries live in a single, local-only store:
 
 ```
 ~/.sage/
-├── <project>/sage.db
+├── sage.db
+├── config.json
 └── templates/*.md
 ```
 
-No manual setup required.
+If you have older per-directory stores from previous versions, Sage will import them into the global store the first time the global store is empty.
 
 ---
 
@@ -345,16 +376,19 @@ Or download a prebuilt binary from Releases.
 
 - sage view
 - tags for organization and filtering
-- semantic graph projection (derived from events)
-- derived projections from concept → decision → artifact relationships
 
-### v0.5 — Ergonomics
+### v0.5 - Developer Ergonomics
+- git hooks
+
+### v0.6 — UX
 
 - TUI (timeline + graph views)
 - fuzzy search
 - interactive filtering
+- semantic graph projection (derived from events)
+- derived projections from concept → decision → artifact relationships
 
-### v0.5+ — Augmentation (Optional)
+### v0.6+ — Augmentation (Optional)
 
 - local AI summarization
 - decision embeddings

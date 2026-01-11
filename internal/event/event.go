@@ -12,6 +12,8 @@ const (
 
 // Event represents a single immutable cognitive entry.
 type Event struct {
+	Seq int64 `json:"-"`
+
 	ID        string    `json:"id"`
 	Timestamp time.Time `json:"timestamp"`
 	Project   string    `json:"project"`
