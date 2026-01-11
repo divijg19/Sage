@@ -8,7 +8,8 @@ import (
 )
 
 type userConfig struct {
-	Editor string `json:"editor,omitempty"`
+	Editor string   `json:"editor,omitempty"`
+	Tags   []string `json:"tags,omitempty"`
 }
 
 func configPath() string {
@@ -80,4 +81,55 @@ func unsetConfiguredEditor() error {
 	}
 	cfg.Editor = ""
 	return saveConfig(cfg)
+}
+
+func getConfiguredTags() ([]string, error) {
+	cfg, err := loadConfig()
+	if err != nil {
+		return nil, err
+	}
+	return append([]string(nil), cfg.Tags...), nil
+}
+
+func setConfiguredTags(tags []string) error {
+	cfg, err := loadConfig()
+	if err != nil {
+		return err
+	}
+	cfg.Tags = append([]string(nil), tags...)
+	return saveConfig(cfg)
+}
+
+func ensureTagsConfigured(tags []string) error {
+	if len(tags) == 0 {
+		return nil
+	}
+
+	current, err := getConfiguredTags()
+	if err != nil {
+		return err
+	}
+
+	set := make(map[string]struct{}, len(current))
+	for _, t := range current {
+		set[t] = struct{}{}
+	}
+
+	changed := false
+	for _, t := range tags {
+		if t == "" {
+			continue
+		}
+		if _, ok := set[t]; ok {
+			continue
+		}
+		current = append(current, t)
+		set[t] = struct{}{}
+		changed = true
+	}
+
+	if !changed {
+		return nil
+	}
+	return setConfiguredTags(current)
 }

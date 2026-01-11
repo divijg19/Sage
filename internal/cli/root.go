@@ -11,8 +11,11 @@ var rootCmd = &cobra.Command{
 		"Core commands:\n" +
 		"  sage add       Add a record/decision (opens your editor)\n" +
 		"  sage editor    Configure which editor Sage uses\n" +
+		"  sage tag       List tags or tag an entry\n" +
 		"  sage timeline  Show timestamp/kind/title summaries\n" +
+		"  sage view      View a past entry by numeric ID\n" +
 		"  sage state     Reconstruct state at a timestamp\n\n" +
+		"Storage: ~/.sage/sage.db (global, local-only).\n" +
 		"Editor precedence: ~/.sage/config.json (sage editor) > $SAGE_EDITOR > $EDITOR.",
 }
 

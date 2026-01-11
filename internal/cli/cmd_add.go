@@ -11,8 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/divijg19/sage/internal/event"
-	"github.com/divijg19/sage/internal/project"
-	"github.com/divijg19/sage/internal/store"
 	"github.com/divijg19/sage/internal/template"
 )
 
@@ -158,6 +156,7 @@ var addCmd = &cobra.Command{
 		}
 
 		tags := parseTags(addTags)
+		_ = ensureTagsConfigured(tags)
 
 		// ---- 6. Resolve kind (hybrid) ----
 
@@ -170,19 +169,14 @@ var addCmd = &cobra.Command{
 			return nil
 		}
 
-		// ---- 8. Persist ----
+		// ---- 8. Persist (global) ----
 
-		projectName, dbPath, err := project.Detect()
+		s, err := openGlobalStore()
 		if err != nil {
 			return err
 		}
 
-		s, err := store.Open(dbPath)
-		if err != nil {
-			return err
-		}
-
-		if prev, err := s.Latest(projectName); err == nil && prev != nil {
+		if prev, err := s.Latest(); err == nil && prev != nil {
 			if prev.Kind == kind && strings.TrimSpace(prev.Title) == title {
 				if normalizePlainText(prev.Content) == normalizePlainText(content) && normalizeTagSet(prev.Tags) == normalizeTagSet(tags) {
 					return nil
@@ -193,7 +187,7 @@ var addCmd = &cobra.Command{
 		e := event.Event{
 			ID:        uuid.NewString(),
 			Timestamp: time.Now(),
-			Project:   projectName,
+			Project:   "global",
 			Kind:      kind,
 			Title:     title,
 			Content:   content,

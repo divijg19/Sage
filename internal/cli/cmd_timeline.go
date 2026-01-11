@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	"github.com/divijg19/sage/internal/event"
-	"github.com/divijg19/sage/internal/project"
-	"github.com/divijg19/sage/internal/store"
 	"github.com/spf13/cobra"
 )
 
@@ -16,31 +14,25 @@ var timelineTags []string
 var timelineCmd = &cobra.Command{
 	Use:   "timeline",
 	Short: "Show chronological history of entries",
-	Long: "Print a clean chronological view of entries for the current project.\n" +
+	Long: "Print a clean chronological view of entries from your global Sage log.\n" +
 		"Output is intentionally summary-only (timestamp, kind, title) to avoid noisy content.",
 	Example: "  sage timeline\n" +
 		"  sage timeline --tags auth\n" +
 		"  sage timeline --tags auth,backend",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// 1. Detect project
-		_, dbPath, err := project.Detect()
+		// 1. Open global store
+		s, err := openGlobalStore()
 		if err != nil {
 			return err
 		}
 
-		// 2. Open store
-		s, err := store.Open(dbPath)
-		if err != nil {
-			return err
-		}
-
-		// 3. Read all events
+		// 2. Read all events
 		events, err := s.List()
 		if err != nil {
 			return err
 		}
 
-		// 4. Print events
+		// 3. Print events
 		want := parseTags(timelineTags)
 		for _, e := range events {
 			if len(want) > 0 && !eventHasAnyTag(e, want) {
@@ -74,7 +66,7 @@ func printEvent(e event.Event) {
 		tagSuffix = " " + strings.Join(copyTags, " ")
 	}
 
-	fmt.Printf("[%s] %-8s %s%s\n", ts, kind, title, tagSuffix)
+	fmt.Printf("[%d] [%s] %-8s %s%s\n", e.Seq, ts, kind, title, tagSuffix)
 }
 
 func init() {
