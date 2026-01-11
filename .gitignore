@@ -1,0 +1,14 @@
+# Build artifacts
+/sage
+/sage.exe
+
+# Go test binaries
+*.test
+
+# Editor/OS cruft
+.DS_Store
+*.swp
+*.swo
+
+# Coverage output
+*.out

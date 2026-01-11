@@ -10,6 +10,8 @@ import (
 )
 
 var timelineTags []string
+var timelineAll bool
+var timelineProject string
 
 var timelineCmd = &cobra.Command{
 	Use:   "timeline",
@@ -27,7 +29,13 @@ var timelineCmd = &cobra.Command{
 		}
 
 		// 2. Read all events
-		events, err := s.List()
+		project, filter := resolveProjectFilter(timelineProject, timelineAll)
+		var events []event.Event
+		if filter {
+			events, err = s.ListByProject(project)
+		} else {
+			events, err = s.List()
+		}
 		if err != nil {
 			return err
 		}
@@ -71,6 +79,8 @@ func printEvent(e event.Event) {
 
 func init() {
 	timelineCmd.Flags().StringArrayVar(&timelineTags, "tags", nil, "filter by tags (repeatable or comma-separated)")
+	timelineCmd.Flags().BoolVar(&timelineAll, "all", false, "show entries from all projects")
+	timelineCmd.Flags().StringVar(&timelineProject, "project", "", "override project scope (ignores active project)")
 	rootCmd.AddCommand(timelineCmd)
 }
 

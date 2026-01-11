@@ -1,3 +1,5 @@
+.github/workflows/ci.yml
+.gitignore
 Codebase.txt
 README.md
 cmd/sage/main.go
@@ -5,6 +7,9 @@ go.mod
 go.sum
 internal/cli/cmd_add.go
 internal/cli/cmd_editor.go
+internal/cli/cmd_hook.go
+internal/cli/cmd_hooks.go
+internal/cli/cmd_projects.go
 internal/cli/cmd_state.go
 internal/cli/cmd_tag.go
 internal/cli/cmd_timeline.go
@@ -15,10 +20,18 @@ internal/cli/env_paths.go
 internal/cli/flow_add_entry.go
 internal/cli/flow_add_entry_test.go
 internal/cli/flow_template.go
+internal/cli/git_utils.go
+internal/cli/git_utils_test.go
 internal/cli/global_store.go
+internal/cli/hook_post_commit_test.go
+internal/cli/hooks_exec_test.go
+internal/cli/hooks_installer.go
+internal/cli/hooks_installer_test.go
 internal/cli/io_editor.go
 internal/cli/io_editor_test.go
 internal/cli/io_input.go
+internal/cli/project_scope.go
+internal/cli/project_scope_test.go
 internal/cli/root.go
 internal/event/event.go
 internal/project/project.go
@@ -28,4 +41,3 @@ internal/template/loader.go
 internal/template/loader_test.go
 internal/template/parser.go
 internal/template/template.go
-sage

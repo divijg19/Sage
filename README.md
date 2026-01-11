@@ -141,6 +141,8 @@ Sage automatically strips YAML front matter (like `title:` / `kind:`) from store
 ```bash
 sage timeline --tags auth
 sage timeline --tags auth,backend
+sage timeline --all
+sage timeline --project myapp
 ```
 
 Timeline output includes a **numeric entry ID** (the first bracket). Use it with:
@@ -157,6 +159,8 @@ sage view 42
 
 This prints the full entry (timestamp, kind, title, tags, content).
 
+If the entry belongs to a project, `sage view` prints `Project: <name>`.
+
 ### Tags
 
 Tags are optional strings used for filtering and finding entries.
@@ -164,6 +168,10 @@ Tags are optional strings used for filtering and finding entries.
 ```bash
 # List tags + counts
 sage tag
+
+# Scope by project (optional)
+sage tag --project myapp
+sage tag --all
 
 # Tag an entry id with a tag (comma-separated supported)
 sage tag 42 "auth"
@@ -178,6 +186,8 @@ sage tag "auth"
 ```bash
 sage state --at 2026-01-09
 sage state --at 2026-01-09T21:30
+sage state --at 2026-01-09 --project myapp
+sage state --at 2026-01-09 --all
 ```
 
 ---
@@ -266,6 +276,35 @@ If you have older per-directory stores from previous versions, Sage will import 
 
 ---
 
+### 📦 Projects (Optional)
+
+Sage defaults to a global view across all entries. Projects are an optional scope you can activate in your shell (like a Python venv):
+
+```bash
+# bash/zsh
+eval "$(sage projects activate myapp)"
+
+# fish
+sage projects activate myapp --shell fish | source
+```
+
+When a project is active, these commands default to that scope:
+
+- `sage add`
+- `sage timeline`
+- `sage state`
+- `sage tag` (listing/showing)
+
+`sage view <id>` is always global by numeric ID.
+
+To see your current scope:
+
+```bash
+sage projects current
+```
+
+---
+
 ### 🖥️ Optional TUI (Planned)
 
 An interactive timeline built on top of the same event store:
@@ -278,13 +317,26 @@ An interactive timeline built on top of the same event store:
 
 ---
 
-### 🔗 Git Integration (Planned)
+### 🔗 Git Hooks
 
-`Sage` can:
+Sage can install a safe `post-commit` hook that records a lightweight commit event into your global log.
 
-- associate events with commits
-- run via git hooks
-- annotate decisions near code changes
+```bash
+# Install into the current repo (backs up/chains existing hooks)
+sage hooks install
+
+# Check status
+sage hooks status
+
+# Uninstall (restores legacy hook if it was backed up)
+sage hooks uninstall
+```
+
+Hook behavior:
+
+- Never blocks commits (best-effort, always exits 0)
+- Default is non-blocking background execution
+- If you prefer synchronous execution: `sage hooks install --sync`
 
 ---
 
@@ -311,7 +363,7 @@ An interactive timeline built on top of the same event store:
 - **Derived Model:** Planned (rebuildable projections)
 - **Storage:** SQLite
 - **Interfaces:** CLI (default)
-- **Scope:** Per-project, local-only
+- **Scope:** Global by default (optional project scope)
 
 `Sage` intentionally avoids:
 
@@ -343,12 +395,13 @@ Or download a prebuilt binary from Releases.
 | Core event model  | ✅     |
 | `sage add`        | ✅     |
 | Templates         | ✅     |
-| Tags              |        |
+| Tags              | ✅     |
 | Timeline          | ✅     |
 | State (`--at`)    | ✅     |
 | Semantic graph    | ⏳     |
 | TUI               | ⏳     |
-| Git hooks         | ⏳     |
+| Git hooks         | ✅     |
+| Projects (scope)  | ✅     |
 
 ---
 
@@ -372,13 +425,14 @@ Or download a prebuilt binary from Releases.
 - clean, trustworthy timeline summaries
 - editor config
 
-### v0.4 — Cognition
+### v0.4 — Cognition ✅
 
 - sage view
 - tags for organization and filtering
 
-### v0.5 - Developer Ergonomics
-- git hooks
+### v0.5 - Developer Ergonomics ✅
+- git hooks 
+- projects (optional scope) 
 
 ### v0.6 — UX
 
@@ -393,6 +447,51 @@ Or download a prebuilt binary from Releases.
 - local AI summarization
 - decision embeddings
 - knowledge graph export
+
+---
+
+## What’s Still Missing (v0.1–v0.5)
+
+Everything in v0.1–v0.5 is usable daily, but there are still a few “sharp edges” that should be addressed before calling it truly hardened.
+
+- **Migration safety:** the store migration path should be transactional/fail-loud (and covered by regression tests) so data can’t be dropped on partial failures.
+- **SQLite robustness:** consider a busy timeout / WAL tuning so concurrent readers (timeline/state) + writers (hooks) don’t cause sporadic failures.
+- **Non-interactive UX:** commands that prompt should have clear behavior when stdin isn’t a TTY (flags-only mode, or a friendly error).
+- **Observability:** a lightweight `sage doctor`/healthcheck-style command (or status output) would make failures easier to debug.
+- **Hooks hardening:** ensure hook execution is resilient across odd repo setups (custom hooks path, detached HEAD, unusual `PWD`).
+
+---
+
+## Test Strategy
+
+Sage is deliberately small; the goal is tight tests around correctness and “no surprises” UX.
+
+- **Unit tests** (fast, pure helpers)
+  - tag parsing/normalization
+  - project scope precedence (`SAGE_PROJECT`, `--project`, `--all`)
+  - timeline/view formatting rules (IDs, timestamps, tag display)
+- **Regression tests** (lock in behaviors that must never change)
+  - “no-op” editor exits don’t write entries
+  - dedupe against latest entry (scoped by project)
+  - hook install/uninstall is idempotent and preserves legacy hooks
+  - store migrations are idempotent and stable-order
+- **Integration tests** (realistic IO)
+  - sqlite open/migrate on temp DB
+  - hook script execution in a temp git repo
+  - editor invocation via a fake script on PATH
+
+---
+
+## CI
+
+This repo includes a GitHub Actions workflow that runs on every push/PR:
+
+- `gofmt` check
+- `go vet ./...`
+- `go test ./...`
+- `go test -race ./...`
+
+See [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 ---
 

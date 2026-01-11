@@ -169,14 +169,22 @@ var addCmd = &cobra.Command{
 			return nil
 		}
 
-		// ---- 8. Persist (global) ----
+		// ---- 8. Persist (global DB; project-scoped entries) ----
 
 		s, err := openGlobalStore()
 		if err != nil {
 			return err
 		}
 
-		if prev, err := s.Latest(); err == nil && prev != nil {
+		project := projectForNewEntry()
+		var prev *event.Event
+		var perr error
+		if project != "" {
+			prev, perr = s.LatestByProject(project)
+		} else {
+			prev, perr = s.Latest()
+		}
+		if perr == nil && prev != nil {
 			if prev.Kind == kind && strings.TrimSpace(prev.Title) == title {
 				if normalizePlainText(prev.Content) == normalizePlainText(content) && normalizeTagSet(prev.Tags) == normalizeTagSet(tags) {
 					return nil
@@ -187,7 +195,7 @@ var addCmd = &cobra.Command{
 		e := event.Event{
 			ID:        uuid.NewString(),
 			Timestamp: time.Now(),
-			Project:   "global",
+			Project:   project,
 			Kind:      kind,
 			Title:     title,
 			Content:   content,

@@ -11,6 +11,8 @@ var rootCmd = &cobra.Command{
 		"Core commands:\n" +
 		"  sage add       Add a record/decision (opens your editor)\n" +
 		"  sage editor    Configure which editor Sage uses\n" +
+		"  sage hooks     Install/manage Git hooks\n" +
+		"  sage projects  Activate/list project scope\n" +
 		"  sage tag       List tags or tag an entry\n" +
 		"  sage timeline  Show timestamp/kind/title summaries\n" +
 		"  sage view      View a past entry by numeric ID\n" +

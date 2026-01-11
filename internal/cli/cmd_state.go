@@ -12,6 +12,8 @@ import (
 
 var stateAt string
 var stateTags []string
+var stateAll bool
+var stateProject string
 
 var stateCmd = &cobra.Command{
 	Use:   "state",
@@ -35,8 +37,14 @@ var stateCmd = &cobra.Command{
 			return err
 		}
 
-		// 3. Load events up to time
-		events, err := s.ListUntil(t)
+		// 3. Load events up to time (optionally project-scoped)
+		project, filter := resolveProjectFilter(stateProject, stateAll)
+		var events []event.Event
+		if filter {
+			events, err = s.ListUntilByProject(t, project)
+		} else {
+			events, err = s.ListUntil(t)
+		}
 		if err != nil {
 			return err
 		}
@@ -120,6 +128,8 @@ func init() {
 		"timestamp (RFC3339 or YYYY-MM-DD)",
 	)
 	stateCmd.Flags().StringArrayVar(&stateTags, "tags", nil, "filter replay by tags (repeatable or comma-separated)")
+	stateCmd.Flags().BoolVar(&stateAll, "all", false, "show entries from all projects")
+	stateCmd.Flags().StringVar(&stateProject, "project", "", "override project scope (ignores active project)")
 	stateCmd.MarkFlagRequired("at")
 	rootCmd.AddCommand(stateCmd)
 }

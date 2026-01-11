@@ -8,6 +8,7 @@ type EntryKind string
 const (
 	RecordKind   EntryKind = "record"
 	DecisionKind EntryKind = "decision"
+	CommitKind   EntryKind = "commit"
 )
 
 // Event represents a single immutable cognitive entry.
