@@ -16,8 +16,8 @@ var tagCmd = &cobra.Command{
 	Short: "List tags, or tag entries",
 	Long: "Tags are optional, user-defined strings used for filtering and finding entries.\n\n" +
 		"Forms:\n" +
-		"  sage tag                 List configured tags with counts (global)\n" +
-		"  sage tag \"name\"          List entries with tag (global)\n" +
+		"  sage tag                 List configured tags with counts (scoped by active project)\n" +
+		"  sage tag \"name\"          List entries with tag (scoped by active project)\n" +
 		"  sage tag <id> \"name\"     Apply tag(s) to an entry (comma-separated supported)",
 	Args: cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -51,12 +51,24 @@ var tagCmd = &cobra.Command{
 	},
 }
 
+var tagAll bool
+var tagProject string
+
 func init() {
+	tagCmd.Flags().BoolVar(&tagAll, "all", false, "show entries from all projects")
+	tagCmd.Flags().StringVar(&tagProject, "project", "", "override project scope (ignores active project)")
 	rootCmd.AddCommand(tagCmd)
 }
 
 func runTagList(s storeLike) error {
-	events, err := s.List()
+	project, filter := resolveProjectFilter(tagProject, tagAll)
+	var events []event.Event
+	var err error
+	if filter {
+		events, err = s.ListByProject(project)
+	} else {
+		events, err = s.List()
+	}
 	if err != nil {
 		return err
 	}
@@ -134,7 +146,14 @@ func runTagShow(s storeLike, name string) error {
 	}
 	want := tags[0]
 
-	events, err := s.List()
+	project, filter := resolveProjectFilter(tagProject, tagAll)
+	var events []event.Event
+	var err error
+	if filter {
+		events, err = s.ListByProject(project)
+	} else {
+		events, err = s.List()
+	}
 	if err != nil {
 		return err
 	}
@@ -233,6 +252,7 @@ func stdinIsTTY() bool {
 
 type storeLike interface {
 	List() ([]event.Event, error)
+	ListByProject(project string) ([]event.Event, error)
 }
 
 type storeTagger interface {

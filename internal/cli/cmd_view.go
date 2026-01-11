@@ -43,6 +43,12 @@ var viewCmd = &cobra.Command{
 func printFullEntry(e event.Event) {
 	fmt.Printf("ID: %d\n", e.Seq)
 	fmt.Printf("When: %s\n", e.Timestamp.Format("2006-01-02 15:04:05"))
+
+	proj := strings.TrimSpace(e.Project)
+	if proj != "" && proj != "global" {
+		fmt.Printf("Project: %s\n", proj)
+	}
+
 	kind := string(e.Kind)
 	if kind == "" {
 		kind = "record"

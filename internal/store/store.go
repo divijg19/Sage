@@ -22,6 +22,10 @@ func Open(path string) (*Store, error) {
 		return nil, err
 	}
 
+	// Reduce "database is locked" errors under concurrent access (e.g. hooks + reads).
+	// This is a connection-local setting.
+	_, _ = db.Exec(`PRAGMA busy_timeout = 5000;`)
+
 	if err := migrate(db); err != nil {
 		return nil, err
 	}
@@ -38,6 +42,14 @@ func migrate(db *sql.DB) error {
 		return ensureIndexes(db)
 	}
 
+	// If this is a v1 DB, migration must be transactional and fail-loud.
+	// We should never drop/rename the existing table unless the copy succeeds.
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	// Create v2 table and copy data.
 	createV2 := `
 	CREATE TABLE IF NOT EXISTS events_v2 (
@@ -49,30 +61,61 @@ func migrate(db *sql.DB) error {
 		data TEXT NOT NULL
 	);
 	`
-	if _, err := db.Exec(createV2); err != nil {
+	if _, err := tx.Exec(createV2); err != nil {
 		return err
 	}
 
-	// Copy from v1 if it exists.
-	// Order by timestamp then id for deterministic seq assignment.
-	copySQL := `
-	INSERT INTO events_v2 (id, timestamp, type, project, data)
-	SELECT id, timestamp, type, project, data
-	FROM events
-	ORDER BY timestamp ASC, id ASC;
-	`
-	_, _ = db.Exec(copySQL) // ignore if v1 table doesn't exist
+	// Copy from v1 if it exists. Order by timestamp then id for deterministic seq assignment.
+	if ok, err := tableExists(db, "events"); err != nil {
+		return err
+	} else if ok {
+		copySQL := `
+		INSERT INTO events_v2 (id, timestamp, type, project, data)
+		SELECT id, timestamp, type, project, data
+		FROM events
+		ORDER BY timestamp ASC, id ASC;
+		`
+		if _, err := tx.Exec(copySQL); err != nil {
+			return err
+		}
+	}
 
 	// Swap tables.
 	// If v1 didn't exist, events_v2 is our empty table.
-	if _, err := db.Exec(`DROP TABLE IF EXISTS events;`); err != nil {
+	if _, err := tx.Exec(`DROP TABLE IF EXISTS events;`); err != nil {
 		return err
 	}
-	if _, err := db.Exec(`ALTER TABLE events_v2 RENAME TO events;`); err != nil {
+	if _, err := tx.Exec(`ALTER TABLE events_v2 RENAME TO events;`); err != nil {
 		return err
 	}
 
-	return ensureIndexes(db)
+	schema := `
+	CREATE INDEX IF NOT EXISTS idx_events_time
+	ON events(timestamp);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_events_id
+	ON events(id);
+	CREATE INDEX IF NOT EXISTS idx_events_project
+	ON events(project);
+	CREATE INDEX IF NOT EXISTS idx_events_project_seq
+	ON events(project, seq);
+	`
+	if _, err := tx.Exec(schema); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func tableExists(db *sql.DB, table string) (bool, error) {
+	row := db.QueryRow(`SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1;`, table)
+	var one int
+	if err := row.Scan(&one); err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func hasColumn(db *sql.DB, table string, column string) (bool, error) {
@@ -106,6 +149,10 @@ func ensureIndexes(db *sql.DB) error {
 	ON events(timestamp);
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_events_id
 	ON events(id);
+	CREATE INDEX IF NOT EXISTS idx_events_project
+	ON events(project);
+	CREATE INDEX IF NOT EXISTS idx_events_project_seq
+	ON events(project, seq);
 	`
 	_, err := db.Exec(schema)
 	return err
@@ -168,6 +215,40 @@ func (s *Store) List() ([]event.Event, error) {
 	return events, rows.Err()
 }
 
+func (s *Store) ListByProject(project string) ([]event.Event, error) {
+	query := `
+	SELECT seq, data
+	FROM events
+	WHERE project = ?
+	ORDER BY seq ASC
+	`
+
+	rows, err := s.db.Query(query, project)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []event.Event
+
+	for rows.Next() {
+		var seq int64
+		var raw string
+		if err := rows.Scan(&seq, &raw); err != nil {
+			return nil, err
+		}
+
+		var e event.Event
+		if err := json.Unmarshal([]byte(raw), &e); err != nil {
+			return nil, err
+		}
+		e.Seq = seq
+		events = append(events, e)
+	}
+
+	return events, rows.Err()
+}
+
 func (s *Store) ListUntil(t time.Time) ([]event.Event, error) {
 	query := `
 	SELECT seq, data
@@ -203,6 +284,40 @@ func (s *Store) ListUntil(t time.Time) ([]event.Event, error) {
 	return events, rows.Err()
 }
 
+func (s *Store) ListUntilByProject(t time.Time, project string) ([]event.Event, error) {
+	query := `
+	SELECT seq, data
+	FROM events
+	WHERE timestamp <= ? AND project = ?
+	ORDER BY seq ASC
+	`
+
+	rows, err := s.db.Query(query, t.Format(time.RFC3339), project)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []event.Event
+
+	for rows.Next() {
+		var seq int64
+		var raw string
+		if err := rows.Scan(&seq, &raw); err != nil {
+			return nil, err
+		}
+
+		var e event.Event
+		if err := json.Unmarshal([]byte(raw), &e); err != nil {
+			return nil, err
+		}
+		e.Seq = seq
+		events = append(events, e)
+	}
+
+	return events, rows.Err()
+}
+
 func (s *Store) Latest() (*event.Event, error) {
 	query := `
 	SELECT seq, data
@@ -228,6 +343,51 @@ func (s *Store) Latest() (*event.Event, error) {
 	e.Seq = seq
 
 	return &e, nil
+}
+
+func (s *Store) LatestByProject(project string) (*event.Event, error) {
+	query := `
+	SELECT seq, data
+	FROM events
+	WHERE project = ?
+	ORDER BY seq DESC
+	LIMIT 1
+	`
+
+	var seq int64
+	var raw string
+	err := s.db.QueryRow(query, project).Scan(&seq, &raw)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var e event.Event
+	if err := json.Unmarshal([]byte(raw), &e); err != nil {
+		return nil, err
+	}
+	e.Seq = seq
+	return &e, nil
+}
+
+func (s *Store) ListProjects() ([]string, error) {
+	rows, err := s.db.Query(`SELECT DISTINCT project FROM events WHERE project IS NOT NULL AND project != '' ORDER BY project ASC;`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []string
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
 }
 
 func (s *Store) Count() (int, error) {
