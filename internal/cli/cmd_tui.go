@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/spf13/cobra"
 
 	"github.com/divijg19/sage/internal/entryflow"
@@ -1106,21 +1107,25 @@ func (m chronicleModel) placeOverlay(base string, overlay string) string {
 		if target >= len(baseLines) {
 			break
 		}
-		baseLine := []rune(baseLines[target])
-		overlayRunes := []rune(line)
-		startX := max(0, (m.width-len(overlayRunes))/2)
-		if len(baseLine) < m.width {
-			baseLine = append(baseLine, []rune(strings.Repeat(" ", m.width-len(baseLine)))...)
+
+		overlayLine := line
+		overlayWidth := ansi.StringWidth(overlayLine)
+		if overlayWidth > m.width {
+			overlayLine = ansi.Truncate(overlayLine, m.width, "")
+			overlayWidth = ansi.StringWidth(overlayLine)
 		}
-		for j, r := range overlayRunes {
-			if startX+j >= len(baseLine) {
-				break
-			}
-			if r != ' ' {
-				baseLine[startX+j] = r
-			}
+
+		startX := max(0, (m.width-overlayWidth)/2)
+		baseLine := baseLines[target]
+		baseWidth := ansi.StringWidth(baseLine)
+		if baseWidth < m.width {
+			baseLine += strings.Repeat(" ", m.width-baseWidth)
 		}
-		baseLines[target] = string(baseLine)
+
+		left := ansi.Cut(baseLine, 0, startX)
+		rightStart := min(m.width, startX+overlayWidth)
+		right := ansi.Cut(baseLine, rightStart, m.width)
+		baseLines[target] = left + overlayLine + right
 	}
 	return strings.Join(baseLines, "\n")
 }
@@ -1220,14 +1225,10 @@ func truncateLine(s string, width int) string {
 	if width <= 0 {
 		return ""
 	}
-	runes := []rune(s)
-	if len(runes) <= width {
-		return s
+	if width == 1 {
+		return ansi.Truncate(s, width, "")
 	}
-	if width <= 1 {
-		return string(runes[:width])
-	}
-	return string(runes[:width-1]) + "…"
+	return ansi.Truncate(s, width, "…")
 }
 
 func min(a int, b int) int {
