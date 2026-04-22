@@ -6,7 +6,7 @@ BASE_URL="${SAGE_INSTALL_BASE_URL:-https://github.com/${REPO}/releases/download}
 LATEST_API_URL="${SAGE_INSTALL_LATEST_API_URL:-https://api.github.com/repos/${REPO}/releases/latest}"
 BIN_DIR="${HOME}/.local/bin"
 VERSION=""
-ENABLE_CHRONICLE_ALIAS=0
+ENABLE_ALIAS=0
 TARGET_SHELL=""
 
 usage() {
@@ -14,12 +14,12 @@ usage() {
 Install Sage from a GitHub release.
 
 Usage:
-  ./install.sh [--version vX.Y.Z] [--bin-dir DIR] [--enable-chronicle-alias] [--shell bash|zsh]
+  ./install.sh [--version vX.Y.Z] [--bin-dir DIR] [--alias] [--shell bash|zsh]
 
 Options:
   --version TAG              Install a specific release tag. Defaults to the latest release.
   --bin-dir DIR              Install the sage binary into DIR. Defaults to ~/.local/bin.
-  --enable-chronicle-alias   Append an opt-in shell function so `chronicle` runs `sage tui`.
+  --alias                    Append an opt-in shell function so `chronicle` runs `sage tui`.
   --shell bash|zsh           Choose which shell rc file to update when aliasing is enabled.
   -h, --help                 Show this help text.
 EOF
@@ -153,8 +153,8 @@ main() {
         BIN_DIR="${2:-}"
         shift 2
         ;;
-      --enable-chronicle-alias)
-        ENABLE_CHRONICLE_ALIAS=1
+      --alias)
+        ENABLE_ALIAS=1
         shift
         ;;
       --shell)
@@ -197,7 +197,7 @@ main() {
   install_binary "${extract_dir}/sage"
   echo "Installed: ${BIN_DIR}/sage"
 
-  if [[ "${ENABLE_CHRONICLE_ALIAS}" -eq 1 ]]; then
+  if [[ "${ENABLE_ALIAS}" -eq 1 ]]; then
     if [[ -z "${TARGET_SHELL}" ]]; then
       TARGET_SHELL="bash"
     fi

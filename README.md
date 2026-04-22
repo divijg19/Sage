@@ -12,6 +12,12 @@ Quick install (release binary):
 curl -fsSL https://raw.githubusercontent.com/divijg19/sage/main/install.sh | bash
 ```
 
+To enable the optional `chronicle` (~`sage tui`) shell alias during install, run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/divijg19/sage/main/install.sh | bash -s -- --alias --shell bash
+```
+
 ---
 
 ## Why `Sage`?
