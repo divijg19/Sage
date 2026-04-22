@@ -1,4 +1,5 @@
 # Build artifacts
+sage
 /sage
 /sage.exe
 
@@ -12,3 +13,4 @@
 
 # Coverage output
 *.out
+.codex
