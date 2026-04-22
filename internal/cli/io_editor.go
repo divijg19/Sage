@@ -167,43 +167,6 @@ func ensureEditorWaitArgs(bin string, extraArgs []string) []string {
 	}
 }
 
-func prepareEditorBody(tpl string, title string) string {
-	return entryflow.PrepareEditorBody(tpl, title)
-}
-
-func resolveEditorKindSeed(explicitKind string, suggested string) string {
-	return entryflow.ResolveEditorKindSeed(explicitKind, suggested)
-}
-
 func ensureFrontMatter(body string, title string, kind string) string {
 	return entryflow.EnsureFrontMatter(body, title, kind)
-}
-
-func defaultEditorTemplate(explicitKind string) string {
-	return entryflow.DefaultEditorTemplate(explicitKind)
-}
-
-// extractTitleAndBodyFromEditor looks for YAML front matter at the top of the
-// buffer and extracts a `title:` field (if present). It returns the extracted
-// title (possibly empty) and the remaining body.
-func extractMetaAndBodyFromEditor(raw string) (string, string, string) {
-	return entryflow.ExtractMetaAndBodyFromEditor(raw)
-}
-
-func stripBoilerplate(s string) string {
-	return entryflow.StripBoilerplate(s)
-}
-
-func normalizeForComparison(raw string) string {
-	return entryflow.NormalizeForComparison(raw)
-}
-
-func normalizePlainText(s string) string {
-	return entryflow.NormalizePlainText(s)
-}
-
-// isMeaningfulContent is intentionally conservative: it requires at least one
-// non-heading line containing a letter or number.
-func isMeaningfulContent(body string) bool {
-	return entryflow.IsMeaningfulContent(body)
 }

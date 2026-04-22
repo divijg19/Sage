@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -965,7 +966,11 @@ func (m chronicleModel) renderPreview(width int, height int) string {
 		))
 	}
 
-	e := row.Event
+	e := m.selectedEvent()
+	if e == nil {
+		return box.Render("No entry selected")
+	}
+
 	project := chronicleScopeLabel(e.Project)
 	if strings.TrimSpace(e.Project) == "" {
 		project = "global"
@@ -982,7 +987,7 @@ func (m chronicleModel) renderPreview(width int, height int) string {
 
 	bodyLines := max(4, height-11)
 	content := lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("230")).Render(chroniclePreviewTitle(&e)),
+		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("230")).Render(chroniclePreviewTitle(e)),
 		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render(fmt.Sprintf("[%d] %s · %s", e.Seq, e.Timestamp.Format("2006-01-02 15:04"), chronicleKindLabel(e.Kind))),
 		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Project: "+project),
 		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Tags: "+tags),
@@ -1006,7 +1011,7 @@ func (m chronicleModel) renderFilterOverlay() string {
 
 	lines := []string{
 		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("230")).Render("Filter Chronicle"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Space toggles · esc closes"),
+		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Space toggles · Esc closes"),
 	}
 	visible := height - 4
 	start := 0
@@ -1058,7 +1063,7 @@ func (m chronicleModel) renderQuickEntryOverlay() string {
 
 	titleBox := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(titleBorder).Padding(0, 1).Render(m.titleInput.View())
 	tagsBox := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(tagsBorder).Padding(0, 1).Render(m.tagsInput.View())
-	kindBox := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(kindBorder).Padding(0, 1).Render(strings.Title(m.quickKindLabel()))
+	kindBox := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(kindBorder).Padding(0, 1).Render(titleCase(m.quickKindLabel()))
 
 	return box.Render(lipgloss.JoinVertical(lipgloss.Left,
 		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("230")).Render("Quick Entry"),
@@ -1073,7 +1078,7 @@ func (m chronicleModel) renderQuickEntryOverlay() string {
 		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Kind"),
 		kindBox,
 		"",
-		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Tab moves · left/right toggles kind · enter continues · esc cancels"),
+		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Tab moves · Left/right toggles kind · Enter continues · Esc cancels"),
 	))
 }
 
@@ -1197,6 +1202,18 @@ func tagKeys(set map[string]bool) []string {
 	}
 	sort.Strings(tags)
 	return tags
+}
+
+func titleCase(s string) string {
+	if s == "" {
+		return s
+	}
+	rs := []rune(s)
+	rs[0] = unicode.ToUpper(rs[0])
+	for i := 1; i < len(rs); i++ {
+		rs[i] = unicode.ToLower(rs[i])
+	}
+	return string(rs)
 }
 
 func truncateLine(s string, width int) string {
