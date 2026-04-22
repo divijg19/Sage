@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -162,14 +161,4 @@ func init() {
 	addCmd.Flags().StringArrayVar(&addTags, "tags", nil, "categorize entry (repeatable or comma-separated, e.g. --tags auth,backend)")
 
 	rootCmd.AddCommand(addCmd)
-}
-
-func normalizeTagSet(tags []string) string {
-	if len(tags) == 0 {
-		return ""
-	}
-	// parseTags already lowercases + dedupes; we only need stable ordering.
-	copyTags := append([]string(nil), tags...)
-	sort.Strings(copyTags)
-	return strings.Join(copyTags, ",")
 }
