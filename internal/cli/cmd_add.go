@@ -5,12 +5,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
-	"github.com/divijg19/sage/internal/event"
+	"github.com/divijg19/sage/internal/entryflow"
 	"github.com/divijg19/sage/internal/template"
 )
 
@@ -103,71 +101,24 @@ var addCmd = &cobra.Command{
 
 		// ---- 4. Prepare editor body ----
 
-		body := ""
 		suggested := ""
-		seedKind := resolveEditorKindSeed(explicitKind, suggested)
-
 		if chosen != nil {
-			prepared := prepareEditorBody(chosen.Body, title)
 			suggested = chosen.SuggestedKind
-			seedKind = resolveEditorKindSeed(explicitKind, suggested)
-			body = ensureFrontMatter(prepared, title, seedKind)
-		} else {
-			seedKind = resolveEditorKindSeed(explicitKind, suggested)
-			body = ensureFrontMatter(
-				prepareEditorBody(defaultEditorTemplate(explicitKind), title),
-				title,
-				seedKind,
-			)
 		}
+		templateBody := ""
+		if chosen != nil {
+			templateBody = chosen.Body
+		}
+		prepared := entryflow.PrepareInitialBuffer(title, explicitKind, suggested, templateBody)
 
 		// ---- 5. Editor (unless skipped) ----
 
-		edited, err := openEditor(body)
+		edited, err := openEditor(prepared.Body)
 		if err != nil {
 			return err
-		}
-		if edited == "" {
-			return nil
-		}
-
-		// If the user didn't change anything from the template, treat it as a no-op.
-		if normalizeForComparison(edited) == normalizeForComparison(body) {
-			return nil
-		}
-
-		editedTitle, editedKind, cleaned := extractMetaAndBodyFromEditor(edited)
-		if editedTitle != "" {
-			title = editedTitle
-		}
-		title = strings.TrimSpace(title)
-		if title == "" {
-			return fmt.Errorf("title is required")
-		}
-
-		// If the user edited the kind field, treat it as explicit intent.
-		if editedKind != "" && !strings.EqualFold(editedKind, seedKind) {
-			explicitKind = editedKind
-		}
-
-		content := strings.TrimSpace(cleaned)
-		if !isMeaningfulContent(content) {
-			return nil
 		}
 
 		tags := parseTags(addTags)
-		_ = ensureTagsConfigured(tags)
-
-		// ---- 6. Resolve kind (hybrid) ----
-
-		kind, err := resolveKind(explicitKind, suggested)
-		if err != nil {
-			return err
-		}
-
-		if !confirm("Save entry? [y/N]: ") {
-			return nil
-		}
 
 		// ---- 8. Persist (global DB; project-scoped entries) ----
 
@@ -177,36 +128,28 @@ var addCmd = &cobra.Command{
 		}
 
 		project := projectForNewEntry()
-		var prev *event.Event
-		var perr error
-		if project != "" {
-			prev, perr = s.LatestByProject(project)
-		} else {
-			prev, perr = s.Latest()
-		}
-		if perr == nil && prev != nil {
-			if prev.Kind == kind && strings.TrimSpace(prev.Title) == title {
-				if normalizePlainText(prev.Content) == normalizePlainText(content) && normalizeTagSet(prev.Tags) == normalizeTagSet(tags) {
-					return nil
-				}
-			}
-		}
 
-		e := event.Event{
-			ID:        uuid.NewString(),
-			Timestamp: time.Now(),
-			Project:   project,
-			Kind:      kind,
-			Title:     title,
-			Content:   content,
-			Tags:      tags,
-		}
-
-		if err := s.Append(e); err != nil {
+		result, err := entryflow.Finalize(entryflow.FinalizeRequest{
+			Title:         title,
+			ExplicitKind:  explicitKind,
+			SuggestedKind: suggested,
+			SeedKind:      prepared.SeedKind,
+			InitialBody:   prepared.Body,
+			Edited:        edited,
+			Project:       project,
+			Tags:          tags,
+		}, entryflow.Dependencies{
+			Store:       s,
+			EnsureTags:  ensureTagsConfigured,
+			ResolveKind: resolveKind,
+			ConfirmSave: func() bool { return confirm("Save entry? [y/N]: ") },
+		})
+		if err != nil {
 			return err
 		}
-
-		fmt.Println("entry recorded")
+		if result.Status == entryflow.StatusSaved {
+			fmt.Println("entry recorded")
+		}
 		return nil
 	},
 }

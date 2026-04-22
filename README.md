@@ -6,6 +6,12 @@
 
 It is a time-aware personal system for developers who want to preserve context, reasoning, and conceptual understanding over time.
 
+Quick install (release binary):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/divijg19/sage/main/install.sh | bash
+```
+
 ---
 
 ## Why `Sage`?
@@ -50,7 +56,7 @@ Think:
 
 ---
 
-## Current CLI (v0.3)
+## Current CLI + Chronicle
 
 Sage is intentionally editor-centric and calm.
 
@@ -305,15 +311,33 @@ sage projects current
 
 ---
 
-### 🖥️ Optional TUI (Planned)
+### 🖥️ Chronicle TUI
 
-An interactive timeline built on top of the same event store:
+Chronicle is available today through:
 
-- vertical timeline + graph view
-- filter by event or concept
-- fuzzy search
-- collapsible days
-- keyboard-first navigation
+```bash
+sage tui
+```
+
+Chronicle reuses the same global event store and add-flow rules as the rest of the CLI, but presents them as a keyboard-first home screen with:
+
+- a `Chronicle` header and project-aware scope summary
+- a day-grouped timeline with expandable entries
+- basic search across title, content, tags, project, and kind
+- filter controls for project, kind, and tags
+- a quick-entry drawer that seeds the note and then opens your configured editor
+
+Useful keys:
+
+- `j` / `k` or arrow keys to move
+- `Enter` / `Space` to expand entries or collapse day groups
+- `/` to focus search
+- `f` to open filters
+- `n` to start a quick entry
+- `r` to reload
+- `Tab` to toggle the preview drawer on narrow terminals
+- `Esc` to close the active drawer/input
+- `q` to quit
 
 ---
 
@@ -376,15 +400,36 @@ Hook behavior:
 
 ## Installation
 
-> `Sage` is currently in active development.
-
-Once released:
+Install from source:
 
 ```bash
 go install github.com/divijg19/sage@latest
 ```
+Useful installer options:
 
-Or download a prebuilt binary from Releases.
+```bash
+./install.sh --version v0.7.0
+./install.sh --bin-dir "$HOME/.local/bin"
+./install.sh --enable-chronicle-alias --shell bash
+```
+
+The optional Chronicle alias is installed as a shell function:
+
+```bash
+chronicle() {
+  sage tui "$@"
+}
+```
+
+This is intentionally a shell function instead of a symlink so `chronicle` can always route to `sage tui` without changing the binary's command parsing.
+
+Release builds are published by `.github/workflows/release.yml` for:
+
+- `linux/amd64`
+- `linux/arm64`
+- `darwin/amd64`
+- `darwin/arm64`
+- `windows/amd64`
 
 ---
 
@@ -399,7 +444,7 @@ Or download a prebuilt binary from Releases.
 | Timeline          | ✅     |
 | State (`--at`)    | ✅     |
 | Semantic graph    | ⏳     |
-| TUI               | ⏳     |
+| Chronicle TUI     | ✅     |
 | Git hooks         | ✅     |
 | Projects (scope)  | ✅     |
 
@@ -436,9 +481,9 @@ Or download a prebuilt binary from Releases.
 
 ### v0.6 — UX
 
-- TUI (timeline + graph views)
-- fuzzy search
-- interactive filtering
+- Chronicle TUI home screen
+- searchable, filterable timeline
+- quick entry handoff from TUI to editor
 - semantic graph projection (derived from events)
 - derived projections from concept → decision → artifact relationships
 
