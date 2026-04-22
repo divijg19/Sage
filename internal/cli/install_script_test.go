@@ -84,7 +84,7 @@ func TestInstallScript_ChronicleAliasIsIdempotent(t *testing.T) {
 		cmd := exec.Command("bash", filepath.Join(repoRoot, "install.sh"),
 			"--version", version,
 			"--bin-dir", binDir,
-			"--enable-chronicle-alias",
+			"--alias",
 			"--shell", "bash",
 		)
 		cmd.Env = append(os.Environ(),
@@ -108,6 +108,48 @@ func TestInstallScript_ChronicleAliasIsIdempotent(t *testing.T) {
 	}
 	if !strings.Contains(content, "chronicle()") || !strings.Contains(content, `sage tui "$@"`) {
 		t.Fatalf("expected chronicle shell function, got:\n%s", content)
+	}
+}
+
+func TestInstallScript_LegacyChronicleAliasFlagRejected(t *testing.T) {
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		t.Skip("installer only targets unix platforms")
+	}
+
+	repoRoot := repoRootFromPackage(t)
+	releaseRoot := t.TempDir()
+	version := "v0.0.3"
+	assetDir := filepath.Join(releaseRoot, "releases", "download", version)
+	if err := os.MkdirAll(assetDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	assetName := installerAssetName(version)
+	if err := writeTestTarball(filepath.Join(assetDir, assetName)); err != nil {
+		t.Fatalf("writeTestTarball: %v", err)
+	}
+
+	home := t.TempDir()
+	binDir := filepath.Join(home, ".local", "bin")
+	rcFile := filepath.Join(home, ".bashrc")
+
+	cmd := exec.Command("bash", filepath.Join(repoRoot, "install.sh"),
+		"--version", version,
+		"--bin-dir", binDir,
+		"--enable-chronicle-alias",
+		"--shell", "bash",
+	)
+	cmd.Env = append(os.Environ(),
+		"HOME="+home,
+		"SAGE_INSTALL_BASE_URL=file://"+filepath.Join(releaseRoot, "releases", "download"),
+		"SAGE_INSTALL_RC_FILE="+rcFile,
+	)
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected install.sh to reject legacy alias flag, got success\n%s", out)
+	}
+	if !strings.Contains(string(out), "unknown argument: --enable-chronicle-alias") {
+		t.Fatalf("expected unknown-argument error for legacy alias flag, got:\n%s", out)
 	}
 }
 
