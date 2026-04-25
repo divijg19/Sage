@@ -10,7 +10,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/spf13/cobra"
 
@@ -25,24 +24,22 @@ var (
 	tuiQuery   string
 )
 
+type chronicleProgram interface {
+	Run() (tea.Model, error)
+}
+
+var newChronicleProgram = func(model tea.Model) chronicleProgram {
+	return tea.NewProgram(model, tea.WithAltScreen())
+}
+
 var tuiCmd = &cobra.Command{
 	Use:   "tui",
 	Short: "Open the Chronicle terminal interface",
 	Long: "Open Chronicle, Sage's keyboard-first terminal interface for browsing\n" +
 		"and adding entries from the same local event store used by the CLI.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		project, filter := resolveProjectFilter(tuiProject, tuiAll)
-		if !filter {
-			project = ""
-		}
-
-		model := newChronicleModel(chronicleOptions{
-			Query:   strings.TrimSpace(tuiQuery),
-			Project: project,
-			Tags:    parseTags(tuiTags),
-		})
-
-		program := tea.NewProgram(model, tea.WithAltScreen())
+		model := newChronicleModel(chronicleOptionsFromFlags())
+		program := newChronicleProgram(model)
 		_, err := program.Run()
 		return err
 	},
@@ -62,6 +59,18 @@ type chronicleOptions struct {
 	Tags    []string
 }
 
+func chronicleOptionsFromFlags() chronicleOptions {
+	project, filter := resolveProjectFilter(tuiProject, tuiAll)
+	if !filter {
+		project = ""
+	}
+	return chronicleOptions{
+		Query:   strings.TrimSpace(tuiQuery),
+		Project: project,
+		Tags:    parseTags(tuiTags),
+	}
+}
+
 type chronicleDataLoadedMsg struct {
 	events    []event.Event
 	tags      []string
@@ -72,6 +81,15 @@ type chronicleDataLoadedMsg struct {
 type chronicleEditorFinishedMsg struct {
 	err error
 }
+
+type chronicleStatusTone string
+
+const (
+	chronicleStatusInfo    chronicleStatusTone = "info"
+	chronicleStatusSuccess chronicleStatusTone = "success"
+	chronicleStatusWarn    chronicleStatusTone = "warn"
+	chronicleStatusError   chronicleStatusTone = "error"
+)
 
 type chronicleModel struct {
 	width  int
@@ -97,6 +115,7 @@ type chronicleModel struct {
 	query       string
 	focused     string
 	status      string
+	statusTone  chronicleStatusTone
 	loading     bool
 	showFilters bool
 	showQuick   bool
@@ -114,6 +133,7 @@ type chroniclePendingEditor struct {
 }
 
 type chronicleFilterItem struct {
+	Group string
 	Label string
 	Kind  string
 	Value string
@@ -164,6 +184,7 @@ func newChronicleModel(opts chronicleOptions) chronicleModel {
 		loading:         true,
 		quickKind:       event.RecordKind,
 		status:          "Loading Chronicle...",
+		statusTone:      chronicleStatusInfo,
 	}
 }
 
@@ -176,20 +197,20 @@ func (m chronicleModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.queryInput.Width = max(18, min(32, m.width-12))
+		m.queryInput.Width = max(18, min(34, m.width-16))
 		return m, nil
 
 	case chronicleDataLoadedMsg:
 		m.loading = false
 		if msg.err != nil {
-			m.status = msg.err.Error()
+			m.setStatusError(msg.err.Error())
 			return m, nil
 		}
 		m.events = msg.events
 		m.availableTags = msg.tags
 		m.projects = chronicleProjectOptions(msg.events)
-		m.status = fmt.Sprintf("%s in %s", chronicleCountLabel(len(filterChronicleEvents(m.events, m.filters()))), chronicleScopeLabel(m.selectedProject))
 		m.rebuildRows(msg.highlight)
+		m.setStatusInfo(m.scopeStatusMessage())
 		return m, nil
 
 	case chronicleEditorFinishedMsg:
@@ -227,22 +248,27 @@ func (m chronicleModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.toggleSelected()
 		case "/":
 			m.focused = "search"
-			m.status = "Search Chronicle"
+			m.setStatusInfo("Search Chronicle")
 			return m, m.queryInput.Focus()
 		case "f":
 			m.showFilters = true
 			m.filterIndex = 0
-			m.status = "Filter palette"
+			m.setStatusInfo("Filter Chronicle")
 		case "n":
 			m.openQuickEntry()
 			return m, m.titleInput.Focus()
 		case "r":
 			m.loading = true
-			m.status = "Reloading Chronicle..."
+			m.setStatusInfo("Reloading Chronicle...")
 			return m, loadChronicleDataCmd()
 		case "tab":
 			if m.isCompact() {
 				m.showPreview = !m.showPreview
+				if m.showPreview {
+					m.setStatusInfo("Inspector mode")
+				} else {
+					m.setStatusInfo("Browse mode")
+				}
 			}
 		}
 
@@ -252,66 +278,38 @@ func (m chronicleModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m chronicleModel) View() string {
-	if m.width == 0 || m.height == 0 {
-		return "Loading Chronicle..."
-	}
-
-	bodyHeight := max(8, m.height-4)
-	header := m.renderHeader()
-	status := m.renderStatus()
-
-	var body string
-	switch {
-	case m.isCompact():
-		body = m.renderCompactBody(bodyHeight)
-	case m.isMedium():
-		body = m.renderMediumBody(bodyHeight)
-	default:
-		body = m.renderWideBody(bodyHeight)
-	}
-
-	if m.showFilters {
-		body = m.placeOverlay(body, m.renderFilterOverlay())
-	}
-	if m.showQuick {
-		body = m.placeOverlay(body, m.renderQuickEntryOverlay())
-	}
-	if m.showPreview && m.isCompact() {
-		body = m.placeOverlay(body, m.renderPreviewOverlay())
-	}
-
-	return lipgloss.JoinVertical(lipgloss.Left, header, body, status)
-}
-
 func (m chronicleModel) updateSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		m.focused = ""
 		m.queryInput.Blur()
-		m.query = m.queryInput.Value()
+		m.query = strings.TrimSpace(m.queryInput.Value())
+		m.queryInput.SetValue(m.query)
 		m.rebuildRows(0)
-		m.status = fmt.Sprintf("Search cleared to %q", strings.TrimSpace(m.query))
+		m.setStatusInfo(chronicleSearchStatus(m.query))
 		return m, nil
 	case "enter":
 		m.focused = ""
 		m.queryInput.Blur()
-		m.query = m.queryInput.Value()
+		m.query = strings.TrimSpace(m.queryInput.Value())
+		m.queryInput.SetValue(m.query)
 		m.rebuildRows(0)
+		m.setStatusInfo(chronicleSearchStatus(m.query))
 		return m, nil
 	}
 
 	var cmd tea.Cmd
 	m.queryInput, cmd = m.queryInput.Update(msg)
-	m.query = m.queryInput.Value()
+	m.query = strings.TrimSpace(m.queryInput.Value())
 	m.rebuildRows(0)
+	m.setStatusInfo(chronicleSearchDraftStatus(m.query))
 	return m, cmd
 }
 
 func (m chronicleModel) updateQuickEntry(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
-		m.closeQuickEntry("Quick entry canceled")
+		m.closeQuickEntry("Quick entry canceled", chronicleStatusWarn)
 		return m, nil
 	case "tab":
 		m.quickField = (m.quickField + 1) % 3
@@ -366,11 +364,14 @@ func (m chronicleModel) updateFilterPalette(msg tea.KeyMsg) chronicleModel {
 		m.showFilters = false
 		return m
 	}
+	if m.filterIndex >= len(items) {
+		m.filterIndex = len(items) - 1
+	}
 
 	switch msg.String() {
 	case "esc":
 		m.showFilters = false
-		m.status = "Closed filters"
+		m.setStatusInfo("Closed filters")
 		return m
 	case "j", "down":
 		if m.filterIndex < len(items)-1 {
@@ -385,19 +386,24 @@ func (m chronicleModel) updateFilterPalette(msg tea.KeyMsg) chronicleModel {
 		switch item.Kind {
 		case "scope_all":
 			m.selectedProject = ""
+			m.setStatusInfo("Scope set to all projects")
 		case "scope_project":
 			m.selectedProject = item.Value
+			m.setStatusInfo("Scope set to " + chronicleScopeLabel(item.Value))
 		case "kind":
 			kind := event.EntryKind(item.Value)
 			m.kindFilter[kind] = !m.kindFilter[kind]
 			if !m.hasEnabledKinds() {
 				m.kindFilter[kind] = true
 			}
+			m.setStatusInfo("Kinds updated")
 		case "tag":
 			if m.tagFilter[item.Value] {
 				delete(m.tagFilter, item.Value)
+				m.setStatusInfo("Removed #" + item.Value + " filter")
 			} else {
 				m.tagFilter[item.Value] = true
+				m.setStatusInfo("Added #" + item.Value + " filter")
 			}
 		}
 		m.rebuildRows(0)
@@ -420,13 +426,13 @@ func (m chronicleModel) finishQuickEntry(execErr error) (tea.Model, tea.Cmd) {
 	if execErr != nil {
 		var exitErr *exec.ExitError
 		if !errors.As(execErr, &exitErr) {
-			m.status = execErr.Error()
+			m.setStatusError(execErr.Error())
 			return m, nil
 		}
 	} else {
 		content, err := launch.result()
 		if err != nil {
-			m.status = err.Error()
+			m.setStatusError(err.Error())
 			return m, nil
 		}
 		edited = content
@@ -434,7 +440,7 @@ func (m chronicleModel) finishQuickEntry(execErr error) (tea.Model, tea.Cmd) {
 
 	s, err := openGlobalStore()
 	if err != nil {
-		m.status = err.Error()
+		m.setStatusError(err.Error())
 		return m, nil
 	}
 
@@ -445,24 +451,24 @@ func (m chronicleModel) finishQuickEntry(execErr error) (tea.Model, tea.Cmd) {
 		ResolveKind: resolveKind,
 	})
 	if err != nil {
-		m.status = err.Error()
+		m.setStatusError(err.Error())
 		return m, nil
 	}
 
 	switch result.Status {
 	case entryflow.StatusSaved:
-		m.status = "Entry recorded"
+		m.setStatusSuccess("Entry recorded")
 		m.showQuick = false
 		m.focused = ""
 		return m, loadChronicleDataCmdWithHighlight(result.Event.Seq)
 	case entryflow.StatusCanceled:
-		m.status = "Editor canceled"
+		m.setStatusWarn("Editor canceled")
 	case entryflow.StatusUnchanged:
-		m.status = "No changes recorded"
+		m.setStatusInfo("No changes recorded")
 	case entryflow.StatusEmpty:
-		m.status = "Entry was empty"
+		m.setStatusWarn("Entry was empty")
 	case entryflow.StatusDuplicate:
-		m.status = "Duplicate entry skipped"
+		m.setStatusWarn("Duplicate entry skipped")
 	}
 
 	m.showQuick = false
@@ -473,7 +479,7 @@ func (m chronicleModel) finishQuickEntry(execErr error) (tea.Model, tea.Cmd) {
 func (m *chronicleModel) startQuickEntry() (tea.Model, tea.Cmd) {
 	title := strings.TrimSpace(m.titleInput.Value())
 	if title == "" {
-		m.status = "Quick entry needs a title"
+		m.setStatusWarn("Quick entry needs a title")
 		return m, nil
 	}
 
@@ -486,7 +492,7 @@ func (m *chronicleModel) startQuickEntry() (tea.Model, tea.Cmd) {
 	prepared := entryflow.PrepareInitialBuffer(title, explicitKind, "", "")
 	launch, err := prepareEditorLaunch(prepared.Body)
 	if err != nil {
-		m.status = err.Error()
+		m.setStatusError(err.Error())
 		return m, nil
 	}
 
@@ -502,7 +508,7 @@ func (m *chronicleModel) startQuickEntry() (tea.Model, tea.Cmd) {
 			Tags:          tags,
 		},
 	}
-	m.status = "Opening editor..."
+	m.setStatusInfo("Opening editor...")
 	return m, tea.ExecProcess(launch.command(), func(err error) tea.Msg {
 		return chronicleEditorFinishedMsg{err: err}
 	})
@@ -515,14 +521,15 @@ func (m *chronicleModel) openQuickEntry() {
 	m.focused = "quick"
 	m.titleInput.SetValue("")
 	m.tagsInput.SetValue("")
+	m.setStatusInfo("Quick entry")
 }
 
-func (m *chronicleModel) closeQuickEntry(status string) {
+func (m *chronicleModel) closeQuickEntry(status string, tone chronicleStatusTone) {
 	m.showQuick = false
 	m.focused = ""
 	m.titleInput.Blur()
 	m.tagsInput.Blur()
-	m.status = status
+	m.setStatus(status, tone)
 }
 
 func (m *chronicleModel) focusQuickField() tea.Cmd {
@@ -544,7 +551,7 @@ func (m *chronicleModel) toggleQuickKind() {
 	} else {
 		m.quickKind = event.DecisionKind
 	}
-	m.status = "Quick entry kind: " + chronicleKindLabel(m.quickKind)
+	m.setStatusInfo("Quick entry kind: " + chronicleKindLabel(m.quickKind))
 }
 
 func (m chronicleModel) quickKindLabel() string {
@@ -574,9 +581,19 @@ func (m *chronicleModel) toggleSelected() {
 	case chronicleRowDay:
 		m.collapsedDays[row.DayKey] = !m.collapsedDays[row.DayKey]
 		m.rebuildRows(0)
+		if m.collapsedDays[row.DayKey] {
+			m.setStatusInfo("Day collapsed")
+		} else {
+			m.setStatusInfo("Day expanded")
+		}
 	case chronicleRowEntry:
 		m.expandedEntries[row.Event.Seq] = !m.expandedEntries[row.Event.Seq]
 		m.rebuildRows(row.Event.Seq)
+		if m.expandedEntries[row.Event.Seq] {
+			m.setStatusInfo("Entry expanded")
+		} else {
+			m.setStatusInfo("Entry collapsed")
+		}
 	}
 }
 
@@ -703,10 +720,11 @@ func (m chronicleModel) hasEnabledKinds() bool {
 
 func (m chronicleModel) filterItems() []chronicleFilterItem {
 	items := []chronicleFilterItem{
-		{Label: "All projects", Kind: "scope_all", On: strings.TrimSpace(m.selectedProject) == ""},
+		{Group: "Scope", Label: "All projects", Kind: "scope_all", On: strings.TrimSpace(m.selectedProject) == ""},
 	}
 	for _, project := range m.projects {
 		items = append(items, chronicleFilterItem{
+			Group: "Scope",
 			Label: chronicleScopeLabel(project),
 			Kind:  "scope_project",
 			Value: project,
@@ -715,6 +733,7 @@ func (m chronicleModel) filterItems() []chronicleFilterItem {
 	}
 	for _, kind := range []event.EntryKind{event.RecordKind, event.DecisionKind, event.CommitKind} {
 		items = append(items, chronicleFilterItem{
+			Group: "Kinds",
 			Label: chronicleKindLabel(kind),
 			Kind:  "kind",
 			Value: string(kind),
@@ -723,6 +742,7 @@ func (m chronicleModel) filterItems() []chronicleFilterItem {
 	}
 	for _, tag := range m.availableTags {
 		items = append(items, chronicleFilterItem{
+			Group: "Tags",
 			Label: "#" + tag,
 			Kind:  "tag",
 			Value: tag,
@@ -732,433 +752,95 @@ func (m chronicleModel) filterItems() []chronicleFilterItem {
 	return items
 }
 
-func (m chronicleModel) renderHeader() string {
-	title := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("230")).
-		Background(lipgloss.Color("25")).
-		Padding(0, 1).
-		Render("Chronicle")
-
-	scope := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("252")).
-		Background(lipgloss.Color("236")).
-		Padding(0, 1).
-		Render(chronicleScopeLabel(m.selectedProject))
-
-	count := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("241")).
-		Render(chronicleCountLabel(len(filterChronicleEvents(m.events, m.filters()))))
-
-	hints := []string{"j/k move", "enter expand", "/ search", "f filters", "n quick entry", "r reload", "q quit"}
-	if m.isCompact() {
-		hints = append(hints, "tab preview")
-	}
-	help := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("244")).
-		Render(strings.Join(hints, " · "))
-
-	line := lipgloss.JoinHorizontal(lipgloss.Left, title, " ", scope, "  ", count)
-	return lipgloss.NewStyle().
-		Width(m.width).
-		Padding(0, 1).
-		MarginBottom(1).
-		Render(lipgloss.JoinVertical(lipgloss.Left, line, help))
-}
-
-func (m chronicleModel) renderStatus() string {
-	return lipgloss.NewStyle().
-		Width(m.width).
-		Padding(0, 1).
-		Foreground(lipgloss.Color("244")).
-		MarginTop(1).
-		Render(m.status)
-}
-
-func (m chronicleModel) renderWideBody(height int) string {
-	leftWidth := 28
-	rightWidth := min(42, max(32, m.width/3))
-	centerWidth := max(30, m.width-leftWidth-rightWidth-4)
-
-	left := m.renderRail(leftWidth, height)
-	center := m.renderTimeline(centerWidth, height)
-	right := m.renderPreview(rightWidth, height)
-
-	return lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", center, "  ", right)
-}
-
-func (m chronicleModel) renderMediumBody(height int) string {
-	leftWidth := 26
-	centerWidth := max(36, m.width-leftWidth-3)
-	timelineHeight := max(8, (height*3)/5)
-	previewHeight := max(6, height-timelineHeight-1)
-
-	left := m.renderRail(leftWidth, height)
-	center := lipgloss.JoinVertical(
-		lipgloss.Left,
-		m.renderTimeline(centerWidth, timelineHeight),
-		m.renderPreview(centerWidth, previewHeight),
-	)
-	return lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", center)
-}
-
-func (m chronicleModel) renderCompactBody(height int) string {
-	return m.renderTimeline(m.width-2, height)
-}
-
-func (m chronicleModel) renderRail(width int, height int) string {
-	box := lipgloss.NewStyle().
-		Width(width).
-		Height(height).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("238")).
-		Padding(1)
-
-	kindBits := []string{}
-	for _, kind := range []event.EntryKind{event.RecordKind, event.DecisionKind, event.CommitKind} {
-		if m.kindFilter[kind] {
-			kindBits = append(kindBits, chronicleKindLabel(kind))
-		}
-	}
-	if len(kindBits) == 0 {
-		kindBits = append(kindBits, "none")
-	}
-
-	tagBits := []string{"(none)"}
-	if len(m.tagFilter) > 0 {
-		tagBits = tagKeys(m.tagFilter)
-		for i := range tagBits {
-			tagBits[i] = "#" + tagBits[i]
-		}
-	}
-
-	content := lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("230")).Render("Search"),
-		m.renderSearchBox(width-4),
-		"",
-		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("230")).Render("Scope"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("252")).Render(chronicleScopeLabel(m.selectedProject)),
-		"",
-		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("230")).Render("Kinds"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("252")).Render(strings.Join(kindBits, " · ")),
-		"",
-		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("230")).Render("Tags"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("252")).Render(strings.Join(tagBits, " ")),
-		"",
-		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Press f to adjust filters"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Press n to start a quick entry"),
-	)
-
-	return box.Render(content)
-}
-
-func (m chronicleModel) renderSearchBox(width int) string {
-	input := m.queryInput
-	input.Width = max(12, width-2)
-	borderColor := lipgloss.Color("238")
-	if m.focused == "search" {
-		borderColor = lipgloss.Color("39")
-	}
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(borderColor).
-		Padding(0, 1).
-		Render(input.View())
-}
-
-func (m chronicleModel) renderTimeline(width int, height int) string {
-	box := lipgloss.NewStyle().
-		Width(width).
-		Height(height).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("238")).
-		Padding(1)
-
-	if len(m.rows) == 0 {
-		return box.Render(lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("No Chronicle entries match the current filters."))
-	}
-
-	contentWidth := max(20, width-4)
-	var allLines []string
-	for i, row := range m.rows {
-		allLines = append(allLines, m.renderTimelineRow(row, i == m.selectedRow, contentWidth)...)
-	}
-
-	viewHeight := max(1, height-2)
-	if len(allLines) <= viewHeight {
-		return box.Render(strings.Join(allLines, "\n"))
-	}
-
-	start := min(m.scrollLine, max(0, len(allLines)-viewHeight))
-	end := min(len(allLines), start+viewHeight)
-	return box.Render(strings.Join(allLines[start:end], "\n"))
-}
-
-func (m chronicleModel) renderTimelineRow(row chronicleRow, selected bool, width int) []string {
-	switch row.Kind {
-	case chronicleRowDay:
-		prefix := "▾"
-		if !row.DayOpen {
-			prefix = "▸"
-		}
-		line := fmt.Sprintf("%s %s  %s", prefix, row.DayLabel, chronicleCountLabel(row.DayCount))
-		style := lipgloss.NewStyle().Foreground(lipgloss.Color("250")).Bold(true)
-		if selected {
-			style = style.Foreground(lipgloss.Color("230")).Background(lipgloss.Color("24"))
-		}
-		return []string{truncateLine(style.Render(line), width)}
-	default:
-		kind := chronicleKindLabel(row.Event.Kind)
-		title := strings.TrimSpace(row.Event.Title)
-		if title == "" {
-			title = "(untitled)"
-		}
-		tags := ""
-		if len(row.Event.Tags) > 0 {
-			tagParts := append([]string(nil), row.Event.Tags...)
-			sort.Strings(tagParts)
-			for i := range tagParts {
-				tagParts[i] = "#" + tagParts[i]
-			}
-			tags = " " + strings.Join(tagParts, " ")
-		}
-
-		line := fmt.Sprintf("│ [%d] %s %-8s %s%s", row.Event.Seq, row.Event.Timestamp.Format("15:04"), kind, title, tags)
-		style := lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
-		if selected {
-			style = style.Foreground(lipgloss.Color("230")).Background(lipgloss.Color("24"))
-		}
-		lines := []string{truncateLine(style.Render(line), width)}
-		if row.EntryOpen {
-			excerpt := chronicleBodyExcerpt(row.PreviewBody, 4)
-			for _, detail := range strings.Split(excerpt, "\n") {
-				detailLine := lipgloss.NewStyle().
-					Foreground(lipgloss.Color("245")).
-					Render("│    " + detail)
-				if selected {
-					detailLine = lipgloss.NewStyle().
-						Foreground(lipgloss.Color("252")).
-						Background(lipgloss.Color("24")).
-						Render("│    " + detail)
-				}
-				lines = append(lines, truncateLine(detailLine, width))
-			}
-		}
-		return lines
-	}
-}
-
-func (m chronicleModel) renderPreview(width int, height int) string {
-	box := lipgloss.NewStyle().
-		Width(width).
-		Height(height).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("238")).
-		Padding(1)
-
-	row := m.selected()
-	if row == nil {
-		return box.Render("No entry selected")
-	}
-	if row.Kind == chronicleRowDay {
-		return box.Render(lipgloss.JoinVertical(lipgloss.Left,
-			lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("230")).Render(row.DayLabel),
-			lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render(chronicleDaySummary(row.DayKey, row.DayCount)),
-		))
-	}
-
-	e := m.selectedEvent()
-	if e == nil {
-		return box.Render("No entry selected")
-	}
-
-	project := chronicleScopeLabel(e.Project)
-	if strings.TrimSpace(e.Project) == "" {
-		project = "global"
-	}
-	tags := "(none)"
-	if len(e.Tags) > 0 {
-		tagParts := append([]string(nil), e.Tags...)
-		sort.Strings(tagParts)
-		for i := range tagParts {
-			tagParts[i] = "#" + tagParts[i]
-		}
-		tags = strings.Join(tagParts, " ")
-	}
-
-	bodyLines := max(4, height-11)
-	content := lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("230")).Render(chroniclePreviewTitle(e)),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render(fmt.Sprintf("[%d] %s · %s", e.Seq, e.Timestamp.Format("2006-01-02 15:04"), chronicleKindLabel(e.Kind))),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Project: "+project),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Tags: "+tags),
-		"",
-		lipgloss.NewStyle().Foreground(lipgloss.Color("252")).Render(chronicleBodyExcerpt(e.Content, bodyLines)),
-	)
-	return box.Render(content)
-}
-
-func (m chronicleModel) renderFilterOverlay() string {
-	items := m.filterItems()
-	width := min(56, max(42, m.width-8))
-	height := min(max(10, len(items)+4), max(12, m.height-6))
-	box := lipgloss.NewStyle().
-		Width(width).
-		Height(height).
-		Border(lipgloss.DoubleBorder()).
-		BorderForeground(lipgloss.Color("39")).
-		Background(lipgloss.Color("235")).
-		Padding(1)
-
-	lines := []string{
-		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("230")).Render("Filter Chronicle"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Space toggles · Esc closes"),
-	}
-	visible := height - 4
-	start := 0
-	if m.filterIndex >= visible {
-		start = m.filterIndex - visible + 1
-	}
-	end := min(len(items), start+visible)
-	for i := start; i < end; i++ {
-		item := items[i]
-		cursor := " "
-		if i == m.filterIndex {
-			cursor = "›"
-		}
-		check := "○"
-		if item.On {
-			check = "●"
-		}
-		line := fmt.Sprintf("%s %s %s", cursor, check, item.Label)
-		style := lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
-		if i == m.filterIndex {
-			style = style.Foreground(lipgloss.Color("230")).Background(lipgloss.Color("24"))
-		}
-		lines = append(lines, style.Render(line))
-	}
-	return box.Render(strings.Join(lines, "\n"))
-}
-
-func (m chronicleModel) renderQuickEntryOverlay() string {
-	width := min(64, max(42, m.width-10))
-	box := lipgloss.NewStyle().
-		Width(width).
-		Border(lipgloss.DoubleBorder()).
-		BorderForeground(lipgloss.Color("39")).
-		Background(lipgloss.Color("235")).
-		Padding(1)
-
-	titleBorder := lipgloss.Color("238")
-	tagsBorder := lipgloss.Color("238")
-	kindBorder := lipgloss.Color("238")
-	if m.quickField == 0 {
-		titleBorder = lipgloss.Color("39")
-	}
-	if m.quickField == 1 {
-		tagsBorder = lipgloss.Color("39")
-	}
-	if m.quickField == 2 {
-		kindBorder = lipgloss.Color("39")
-	}
-
-	titleBox := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(titleBorder).Padding(0, 1).Render(m.titleInput.View())
-	tagsBox := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(tagsBorder).Padding(0, 1).Render(m.tagsInput.View())
-	kindBox := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(kindBorder).Padding(0, 1).Render(titleCase(m.quickKindLabel()))
-
-	return box.Render(lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("230")).Render("Quick Entry"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Seed the note here, then Chronicle opens your editor."),
-		"",
-		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Title"),
-		titleBox,
-		"",
-		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Tags"),
-		tagsBox,
-		"",
-		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Kind"),
-		kindBox,
-		"",
-		lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render("Tab moves · Left/right toggles kind · Enter continues · Esc cancels"),
-	))
-}
-
-func (m chronicleModel) renderPreviewOverlay() string {
-	width := min(64, max(42, m.width-8))
-	return lipgloss.NewStyle().
-		Width(width).
-		Border(lipgloss.DoubleBorder()).
-		BorderForeground(lipgloss.Color("39")).
-		Background(lipgloss.Color("235")).
-		Padding(1).
-		Render(m.renderPreview(width-4, min(18, max(10, m.height-8))))
-}
-
-func (m chronicleModel) placeOverlay(base string, overlay string) string {
-	baseLines := strings.Split(base, "\n")
-	overlayLines := strings.Split(overlay, "\n")
-	if len(baseLines) == 0 {
-		return overlay
-	}
-
-	startY := max(0, (len(baseLines)-len(overlayLines))/2)
-	for i, line := range overlayLines {
-		target := startY + i
-		if target >= len(baseLines) {
-			break
-		}
-
-		overlayLine := line
-		overlayWidth := ansi.StringWidth(overlayLine)
-		if overlayWidth > m.width {
-			overlayLine = ansi.Truncate(overlayLine, m.width, "")
-			overlayWidth = ansi.StringWidth(overlayLine)
-		}
-
-		startX := max(0, (m.width-overlayWidth)/2)
-		baseLine := baseLines[target]
-		baseWidth := ansi.StringWidth(baseLine)
-		if baseWidth < m.width {
-			baseLine += strings.Repeat(" ", m.width-baseWidth)
-		}
-
-		left := ansi.Cut(baseLine, 0, startX)
-		rightStart := min(m.width, startX+overlayWidth)
-		right := ansi.Cut(baseLine, rightStart, m.width)
-		baseLines[target] = left + overlayLine + right
-	}
-	return strings.Join(baseLines, "\n")
-}
-
 func (m chronicleModel) timelineWidth() int {
 	switch {
 	case m.isCompact():
 		return m.width - 2
 	case m.isMedium():
-		return max(36, m.width-29)
+		leftWidth := min(32, max(30, m.width/4))
+		return max(40, m.width-leftWidth-2)
 	default:
-		rightWidth := min(42, max(32, m.width/3))
-		return max(30, m.width-28-rightWidth-4)
+		leftWidth := min(36, max(32, m.width/4))
+		rightWidth := min(44, max(34, m.width/3))
+		return max(34, m.width-leftWidth-rightWidth-4)
 	}
 }
 
 func (m chronicleModel) timelineHeight() int {
 	switch {
 	case m.isCompact():
-		return max(8, m.height-4)
+		return max(10, m.height-8)
 	case m.isMedium():
-		return max(8, ((m.height-4)*3)/5)
+		return max(10, ((m.height-8)*3)/5)
 	default:
-		return max(8, m.height-4)
+		return max(10, m.height-8)
 	}
 }
 
 func (m chronicleModel) isCompact() bool {
-	return m.width < 90
+	return m.width < 92
 }
 
 func (m chronicleModel) isMedium() bool {
-	return m.width >= 90 && m.width < 120
+	return m.width >= 92 && m.width < 124
+}
+
+func (m chronicleModel) filteredEvents() []event.Event {
+	return filterChronicleEvents(m.events, m.filters())
+}
+
+func (m chronicleModel) filteredCount() int {
+	return len(m.filteredEvents())
+}
+
+func (m chronicleModel) activeKindLabels() []string {
+	var kinds []string
+	for _, kind := range []event.EntryKind{event.RecordKind, event.DecisionKind, event.CommitKind} {
+		if m.kindFilter[kind] {
+			kinds = append(kinds, chronicleKindLabel(kind))
+		}
+	}
+	return kinds
+}
+
+func (m chronicleModel) activeTagLabels() []string {
+	tags := tagKeys(m.tagFilter)
+	for i := range tags {
+		tags[i] = "#" + tags[i]
+	}
+	return tags
+}
+
+func (m chronicleModel) scopeStatusMessage() string {
+	return fmt.Sprintf("%s in %s", chronicleCountLabel(m.filteredCount()), chronicleScopeLabel(m.selectedProject))
+}
+
+func (m chronicleModel) activeModeLabel() string {
+	if m.isCompact() && m.showPreview {
+		return "Inspect"
+	}
+	return "Browse"
+}
+
+func (m *chronicleModel) setStatus(status string, tone chronicleStatusTone) {
+	m.status = status
+	m.statusTone = tone
+}
+
+func (m *chronicleModel) setStatusInfo(status string) {
+	m.setStatus(status, chronicleStatusInfo)
+}
+
+func (m *chronicleModel) setStatusSuccess(status string) {
+	m.setStatus(status, chronicleStatusSuccess)
+}
+
+func (m *chronicleModel) setStatusWarn(status string) {
+	m.setStatus(status, chronicleStatusWarn)
+}
+
+func (m *chronicleModel) setStatusError(status string) {
+	m.setStatus(status, chronicleStatusError)
 }
 
 func loadChronicleDataCmd() tea.Cmd {
@@ -1196,6 +878,20 @@ func chronicleKindLabel(kind event.EntryKind) string {
 	default:
 		return "record"
 	}
+}
+
+func chronicleSearchStatus(query string) string {
+	if strings.TrimSpace(query) == "" {
+		return "Search cleared"
+	}
+	return fmt.Sprintf("Search applied: %q", strings.TrimSpace(query))
+}
+
+func chronicleSearchDraftStatus(query string) string {
+	if strings.TrimSpace(query) == "" {
+		return "Searching all Chronicle entries"
+	}
+	return fmt.Sprintf("Searching: %q", strings.TrimSpace(query))
 }
 
 func tagKeys(set map[string]bool) []string {

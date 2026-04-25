@@ -76,10 +76,12 @@ urprises” UX.
 	- dedupe against latest entry (scoped by project)
 	- hook install/uninstall is idempotent and preserves legacy hooks
 	- store migrations are idempotent and stable-order
+	- Chronicle TUI state transitions and rendering snapshots stay stable across breakpoints
 - **Integration tests** (realistic IO)
 	- sqlite open/migrate on temp DB
 	- hook script execution in a temp git repo
 	- editor invocation via a fake script on PATH
+	- Chronicle quick-entry and data-loading flows against a temp global store
 
 This repo includes a GitHub Actions workflow that runs on every push/PR:
 

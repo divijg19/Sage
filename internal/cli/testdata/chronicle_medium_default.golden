@@ -1,0 +1,33 @@
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                        │
+│  Chronicle   all projects   3 entries                                                                  │
+│ Search: all notes  Filters: none                                                                       │
+│ j/k move · enter toggle · / search · f filters · n quick entry · r reload · q quit                     │
+│                                                                                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭──────────────────────────╮  ╭────────────────────────────────────────────────────────────────────────╮
+│                          │  │                                                                        │
+│ Context                  │  │ Timeline  3 entries in all projects                                    │
+│ ╭──────────────────────╮ │  │                                                                        │
+│ │ Search title, not…   │ │  │ ▾ Wed, Apr 22 2026  2 entries                                          │
+│ ╰──────────────────────╯ │  │   09:00  Investigate auth cache                                        │
+│                          │  │   Record · ID 1 · alpha · #auth #backend                               │
+│ Scope                    │  │   11:30  Switch to sqlite wal                                          │
+│ all projects             │  │   Decision · ID 2 · alpha · #storage                                   │
+│                          │  │ ▾ Thu, Apr 23 2026  1 entry                                            │
+│ Kinds                    │  │   08:45  Polish chronicle layout                                       │
+│  Record   Decision       │  │   Commit · ID 3 · all projects · #release #ux                          │
+│  Commit                  │  │                                                                        │
+│                          │  ╰────────────────────────────────────────────────────────────────────────╯
+│ Tags                     │  ╭────────────────────────────────────────────────────────────────────────╮
+│  No tag filters          │  │                                                                        │
+│                          │  │ Inspector                                                              │
+│ Actions                  │  │                                                                        │
+│  / search   f filters    │  │ Wed, Apr 22 2026                                                       │
+│  n quick entry           │  │ Wednesday, April 22 · 2 entries                                        │
+│  r reload                │  │                                                                        │
+│                          │  │ This is a day group.                                                   │
+╰──────────────────────────╯  │ Press Enter to collapse or expand the entries for this day.            │
+                              │                                                                        │
+                              ╰────────────────────────────────────────────────────────────────────────╯
+Ready
