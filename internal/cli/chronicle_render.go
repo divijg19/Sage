@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
@@ -18,8 +19,9 @@ func (m chronicleModel) View() string {
 
 	theme := newChronicleTheme()
 	header := m.renderMasthead(theme)
-	status := m.renderStatus(theme)
-	bodyHeight := max(10, m.height-lipgloss.Height(header)-lipgloss.Height(status))
+	prompt := m.renderPromptBar(theme)
+	footer := m.renderFooter(theme)
+	bodyHeight := max(10, m.height-lipgloss.Height(header)-lipgloss.Height(prompt)-lipgloss.Height(footer))
 
 	var body string
 	switch {
@@ -38,7 +40,7 @@ func (m chronicleModel) View() string {
 		body = m.placeOverlay(body, m.renderQuickEntryOverlay(theme))
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Left, header, body, status)
+	return lipgloss.JoinVertical(lipgloss.Left, header, body, prompt, footer)
 }
 
 func (m chronicleModel) renderMasthead(theme chronicleTheme) string {
@@ -58,52 +60,110 @@ func (m chronicleModel) renderMasthead(theme chronicleTheme) string {
 		searchSummary = fmt.Sprintf("Search: %q", strings.TrimSpace(m.query))
 	}
 	filterSummary := chronicleFilterSummary(m)
-	help := chronicleHelpSummary(m)
-
 	lines := []string{
 		truncateLine(strings.Join(topTokens, " "), contentWidth),
 		truncateLine(theme.muted().Render(searchSummary)+"  "+theme.muted().Render(filterSummary), contentWidth),
-		truncateLine(theme.muted().Render(help), contentWidth),
 	}
 
 	return theme.masthead(m.width).Render(strings.Join(lines, "\n"))
 }
 
-func (m chronicleModel) renderStatus(theme chronicleTheme) string {
-	return theme.status(m.statusTone, m.width).Render(m.status)
+func (m chronicleModel) availableBodyHeight() int {
+	theme := newChronicleTheme()
+	return m.height -
+		lipgloss.Height(m.renderMasthead(theme)) -
+		lipgloss.Height(m.renderPromptBar(theme)) -
+		lipgloss.Height(m.renderFooter(theme))
+}
+
+type chronicleBodyLayout struct {
+	leftWidth   int
+	centerWidth int
+	rightWidth  int
+}
+
+func (m chronicleModel) bodyLayout() chronicleBodyLayout {
+	switch {
+	case m.isCompact():
+		return chronicleBodyLayout{centerWidth: max(20, m.width)}
+	case m.isMedium():
+		leftWidth := min(32, max(28, m.width/4))
+		centerWidth := max(40, m.width-leftWidth-2)
+		return chronicleBodyLayout{leftWidth: leftWidth, centerWidth: centerWidth}
+	default:
+		leftWidth := min(34, max(30, m.width/4))
+		rightWidth := min(44, max(36, m.width/3))
+		centerWidth := max(42, m.width-leftWidth-rightWidth-4)
+		return chronicleBodyLayout{
+			leftWidth:   leftWidth,
+			centerWidth: centerWidth,
+			rightWidth:  max(24, m.width-leftWidth-centerWidth-4),
+		}
+	}
+}
+
+func (m chronicleModel) renderPromptBar(theme chronicleTheme) string {
+	contentWidth := max(20, m.width-4)
+	input := m.queryInput
+	mode := "Search"
+	prefix := "/"
+	if m.inputMode == chronicleInputCommand {
+		input = m.commandInput
+		mode = "sage"
+		prefix = ":"
+	}
+
+	label := theme.chip(prefix+" "+mode, true, m.focused == "input")
+	inputWidth := max(10, contentWidth-ansi.StringWidth(label)-1)
+	input.Width = inputWidth
+
+	inputLine := truncateLine(label+" "+m.bottomInputDisplay(theme, input, inputWidth), contentWidth)
+	statusLine := truncateLine(theme.statusText(m.statusTone).Render(m.status), contentWidth)
+
+	return theme.promptBar(m.width, m.focused == "input").Render(inputLine + "\n" + statusLine)
+}
+
+func (m chronicleModel) bottomInputDisplay(theme chronicleTheme, input textinput.Model, width int) string {
+	value := input.Value()
+	if strings.TrimSpace(value) == "" {
+		return truncateLine(theme.muted().Render(input.Placeholder), width)
+	}
+	if m.focused == "input" {
+		value += "|"
+	}
+	return truncateLine(theme.body().Render(value), width)
+}
+
+func (m chronicleModel) renderFooter(theme chronicleTheme) string {
+	return theme.footer(m.width).Render(wrapFooterTokens(chronicleFooterHints(m), max(20, m.width)))
 }
 
 func (m chronicleModel) renderWideBody(theme chronicleTheme, height int) string {
-	gapWidth := 4
-	leftWidth := min(36, max(32, m.width/4))
-	rightWidth := min(44, max(34, m.width/3))
-	centerWidth := max(34, m.width-leftWidth-rightWidth-gapWidth)
+	layout := m.bodyLayout()
 
-	left := m.renderRail(theme, leftWidth, height)
-	center := m.renderTimeline(theme, centerWidth, height)
-	right := m.renderPreview(theme, rightWidth, height)
+	left := m.renderRail(theme, layout.leftWidth, height)
+	center := m.renderTimeline(theme, layout.centerWidth, height)
+	right := m.renderPreview(theme, layout.rightWidth, height)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", center, "  ", right)
 }
 
 func (m chronicleModel) renderMediumBody(theme chronicleTheme, height int) string {
-	gapWidth := 2
-	leftWidth := min(32, max(30, m.width/4))
-	centerWidth := max(40, m.width-leftWidth-gapWidth)
+	layout := m.bodyLayout()
 	timelineHeight := max(10, (height*3)/5)
 	previewHeight := max(9, height-timelineHeight-1)
 
-	left := m.renderRail(theme, leftWidth, height)
+	left := m.renderRail(theme, layout.leftWidth, height)
 	center := lipgloss.JoinVertical(
 		lipgloss.Left,
-		m.renderTimeline(theme, centerWidth, timelineHeight),
-		m.renderPreview(theme, centerWidth, previewHeight),
+		m.renderTimeline(theme, layout.centerWidth, timelineHeight),
+		m.renderPreview(theme, layout.centerWidth, previewHeight),
 	)
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", center)
 }
 
 func (m chronicleModel) renderCompactBody(theme chronicleTheme, height int) string {
-	width := m.width - 2
+	width := m.bodyLayout().centerWidth
 	if m.showPreview {
 		return m.renderPreview(theme, width, height)
 	}
@@ -131,19 +191,15 @@ func (m chronicleModel) renderRail(theme chronicleTheme, width int, height int) 
 		tagTokens = append(tagTokens, theme.chip("No tag filters", false, false))
 	}
 
-	actionTokens := []string{
-		theme.chip("/ search", true, false),
-		theme.chip("f filters", true, false),
-		theme.chip("n quick entry", true, false),
-		theme.chip("r reload", true, false),
-	}
+	selected := m.selectedContextLine()
 
 	sections := []string{
 		theme.sectionTitle().Render("Context"),
-		m.renderSearchBox(theme, contentWidth),
-		"",
 		theme.sectionTitle().Render("Scope"),
 		theme.body().Render(chronicleScopeLabel(m.selectedProject)),
+		"",
+		theme.sectionTitle().Render("Search"),
+		theme.body().Render(m.searchContextLabel()),
 		"",
 		theme.sectionTitle().Render("Kinds"),
 		wrapStyledTokens(kindTokens, contentWidth),
@@ -151,18 +207,30 @@ func (m chronicleModel) renderRail(theme chronicleTheme, width int, height int) 
 		theme.sectionTitle().Render("Tags"),
 		wrapStyledTokens(tagTokens, contentWidth),
 		"",
-		theme.sectionTitle().Render("Actions"),
-		wrapStyledTokens(actionTokens, contentWidth),
+		theme.sectionTitle().Render("Selected"),
+		theme.muted().Render(truncateLine(selected, contentWidth)),
 	}
 
 	return theme.panel(width, height, false).Render(strings.Join(sections, "\n"))
 }
 
-func (m chronicleModel) renderSearchBox(theme chronicleTheme, width int) string {
-	input := m.queryInput
-	boxWidth := max(14, width-4)
-	input.Width = max(10, width-8)
-	return theme.inputBox(m.focused == "search").Width(boxWidth).Render(input.View())
+func (m chronicleModel) searchContextLabel() string {
+	if strings.TrimSpace(m.query) == "" {
+		return "all notes"
+	}
+	return fmt.Sprintf("%q", strings.TrimSpace(m.query))
+}
+
+func (m chronicleModel) selectedContextLine() string {
+	row := m.selected()
+	if row == nil {
+		return "Move through the timeline"
+	}
+	if row.Kind == chronicleRowDay {
+		return row.DayLabel + " · " + chronicleCountLabel(row.DayCount)
+	}
+	title := chroniclePreviewTitle(&row.Event)
+	return fmt.Sprintf("ID %d · %s", row.Event.Seq, title)
 }
 
 func (m chronicleModel) renderTimeline(theme chronicleTheme, width int, height int) string {
@@ -381,18 +449,14 @@ func (m chronicleModel) renderQuickEntryOverlay(theme chronicleTheme) string {
 
 	lines := []string{
 		theme.title().Render("Quick Entry"),
-		theme.muted().Render("Seed the note here, then Chronicle opens your editor."),
-		"",
 		theme.sectionTitle().Render("Title"),
 		titleBox,
-		"",
 		theme.sectionTitle().Render("Tags"),
 		tagsBox,
-		"",
 		theme.sectionTitle().Render("Kind"),
 		kindBox,
 		"",
-		theme.muted().Render("Tab moves · Left/right toggles kind · Enter continues · Esc cancels"),
+		theme.muted().Render("Tab fields · arrows change kind · Enter continue · Esc close"),
 	}
 
 	return theme.modal(width).Render(strings.Join(lines, "\n"))
@@ -444,13 +508,49 @@ func chronicleFilterSummary(m chronicleModel) string {
 	return "Filters: " + strings.Join(parts, " · ")
 }
 
-func chronicleHelpSummary(m chronicleModel) string {
-	if m.isCompact() {
-		return strings.Join([]string{"j/k move", "enter toggle", "/ search", "f filters", "tab inspect", "q quit"}, " · ")
+func chronicleFooterHints(m chronicleModel) []string {
+	tabHint := "tab inspect"
+	if m.focused == "input" {
+		tabHint = "tab search/command"
 	}
-	hints := []string{"j/k move", "enter toggle", "/ search", "f filters", "n quick entry", "r reload"}
-	hints = append(hints, "q quit")
-	return strings.Join(hints, " · ")
+	return []string{
+		"j/k move",
+		"enter/space toggle",
+		"/ search",
+		": command",
+		"f filters",
+		"n new",
+		"r reload",
+		tabHint,
+		"esc close",
+		"q quit",
+	}
+}
+
+func wrapFooterTokens(tokens []string, width int) string {
+	if len(tokens) == 0 {
+		return ""
+	}
+	var lines []string
+	current := ""
+	for _, token := range tokens {
+		next := token
+		if current != "" {
+			next = current + " · " + token
+		}
+		if ansi.StringWidth(next) <= width {
+			current = next
+			continue
+		}
+		if current != "" {
+			lines = append(lines, current)
+		}
+		current = token
+	}
+	if current != "" {
+		lines = append(lines, current)
+	}
+	return strings.Join(lines, "\n")
 }
 
 func allKindsEnabled(kindFilter map[event.EntryKind]bool) bool {

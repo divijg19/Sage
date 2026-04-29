@@ -55,3 +55,34 @@ func TestPlaceOverlayTruncatesTooWideOverlay(t *testing.T) {
 		t.Fatalf("expected overlay to be truncated to base width, got %q", plain)
 	}
 }
+
+func TestChronicleViewWideLinesFillWidth(t *testing.T) {
+	m := fixtureChronicleModel(140, 34)
+	view := ansi.Strip(m.View())
+	for i, line := range strings.Split(view, "\n") {
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "j/k move") || strings.HasPrefix(line, "r reload") {
+			continue
+		}
+		if got := ansi.StringWidth(line); got != m.width {
+			t.Fatalf("expected wide view line %d to fill width %d, got %d: %q", i, m.width, got, line)
+		}
+	}
+}
+
+func TestChronicleFooterWrapsAllShortcuts(t *testing.T) {
+	m := fixtureChronicleModel(80, 24)
+	footer := ansi.Strip(m.renderFooter(newChronicleTheme()))
+	for _, want := range []string{"/ search", ": command", "f filters", "n new", "r reload", "tab inspect", "esc close", "q quit"} {
+		if !strings.Contains(footer, want) {
+			t.Fatalf("expected compact footer to include %q in:\n%s", want, footer)
+		}
+	}
+	for i, line := range strings.Split(footer, "\n") {
+		if got := ansi.StringWidth(line); got > m.width {
+			t.Fatalf("footer line %d exceeds width %d: got %d", i, m.width, got)
+		}
+	}
+}

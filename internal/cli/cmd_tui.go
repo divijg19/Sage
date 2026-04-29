@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -83,21 +84,26 @@ type chronicleEditorFinishedMsg struct {
 }
 
 type chronicleStatusTone string
+type chronicleInputMode string
 
 const (
 	chronicleStatusInfo    chronicleStatusTone = "info"
 	chronicleStatusSuccess chronicleStatusTone = "success"
 	chronicleStatusWarn    chronicleStatusTone = "warn"
 	chronicleStatusError   chronicleStatusTone = "error"
+
+	chronicleInputSearch  chronicleInputMode = "search"
+	chronicleInputCommand chronicleInputMode = "command"
 )
 
 type chronicleModel struct {
 	width  int
 	height int
 
-	queryInput textinput.Model
-	titleInput textinput.Model
-	tagsInput  textinput.Model
+	queryInput   textinput.Model
+	commandInput textinput.Model
+	titleInput   textinput.Model
+	tagsInput    textinput.Model
 
 	events          []event.Event
 	rows            []chronicleRow
@@ -114,6 +120,7 @@ type chronicleModel struct {
 
 	query       string
 	focused     string
+	inputMode   chronicleInputMode
 	status      string
 	statusTone  chronicleStatusTone
 	loading     bool
@@ -148,6 +155,12 @@ func newChronicleModel(opts chronicleOptions) chronicleModel {
 	queryInput.CharLimit = 256
 	queryInput.Width = 26
 
+	commandInput := textinput.New()
+	commandInput.Prompt = ""
+	commandInput.Placeholder = "add, filters, reload, view 12"
+	commandInput.CharLimit = 160
+	commandInput.Width = 26
+
 	titleInput := textinput.New()
 	titleInput.Prompt = ""
 	titleInput.Placeholder = "Entry title"
@@ -173,6 +186,7 @@ func newChronicleModel(opts chronicleOptions) chronicleModel {
 
 	return chronicleModel{
 		queryInput:      queryInput,
+		commandInput:    commandInput,
 		titleInput:      titleInput,
 		tagsInput:       tagsInput,
 		selectedProject: opts.Project,
@@ -181,6 +195,7 @@ func newChronicleModel(opts chronicleOptions) chronicleModel {
 		collapsedDays:   map[string]bool{},
 		expandedEntries: map[int64]bool{},
 		query:           opts.Query,
+		inputMode:       chronicleInputSearch,
 		loading:         true,
 		quickKind:       event.RecordKind,
 		status:          "Loading Chronicle...",
@@ -197,7 +212,8 @@ func (m chronicleModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.queryInput.Width = max(18, min(34, m.width-16))
+		m.queryInput.Width = max(18, min(52, m.width-24))
+		m.commandInput.Width = max(18, min(52, m.width-24))
 		return m, nil
 
 	case chronicleDataLoadedMsg:
@@ -233,8 +249,8 @@ func (m chronicleModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateFilterPalette(msg), nil
 		}
 
-		if m.focused == "search" {
-			return m.updateSearch(msg)
+		if m.focused == "input" {
+			return m.updateBottomInput(msg)
 		}
 
 		switch msg.String() {
@@ -247,9 +263,9 @@ func (m chronicleModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter", " ":
 			m.toggleSelected()
 		case "/":
-			m.focused = "search"
-			m.setStatusInfo("Search Chronicle")
-			return m, m.queryInput.Focus()
+			return m.openBottomInput(chronicleInputSearch, "Search Chronicle")
+		case ":":
+			return m.openBottomInput(chronicleInputCommand, "Sage command prompt")
 		case "f":
 			m.showFilters = true
 			m.filterIndex = 0
@@ -275,6 +291,82 @@ func (m chronicleModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	return m, nil
+}
+
+func (m chronicleModel) openBottomInput(mode chronicleInputMode, status string) (tea.Model, tea.Cmd) {
+	m.focused = "input"
+	m.inputMode = mode
+	m.setStatusInfo(status)
+	return m, m.focusBottomInput()
+}
+
+func (m *chronicleModel) focusBottomInput() tea.Cmd {
+	m.queryInput.Blur()
+	m.commandInput.Blur()
+	if m.inputMode == chronicleInputCommand {
+		return m.commandInput.Focus()
+	}
+	return m.queryInput.Focus()
+}
+
+func (m chronicleModel) updateBottomInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "tab":
+		if m.inputMode == chronicleInputSearch {
+			m.inputMode = chronicleInputCommand
+			m.setStatusInfo("Sage command prompt")
+		} else {
+			m.inputMode = chronicleInputSearch
+			m.setStatusInfo("Search Chronicle")
+		}
+		return m, m.focusBottomInput()
+	case "esc":
+		return m.blurBottomInput()
+	case "enter":
+		if m.inputMode == chronicleInputCommand {
+			return m.runCommandInput()
+		}
+		return m.applySearchInput()
+	}
+
+	var cmd tea.Cmd
+	if m.inputMode == chronicleInputCommand {
+		m.commandInput, cmd = m.commandInput.Update(msg)
+		m.setStatusInfo(chronicleCommandDraftStatus(m.commandInput.Value()))
+		return m, cmd
+	}
+
+	m.queryInput, cmd = m.queryInput.Update(msg)
+	m.query = strings.TrimSpace(m.queryInput.Value())
+	m.rebuildRows(0)
+	m.setStatusInfo(chronicleSearchDraftStatus(m.query))
+	return m, cmd
+}
+
+func (m chronicleModel) blurBottomInput() (tea.Model, tea.Cmd) {
+	m.focused = ""
+	m.queryInput.Blur()
+	m.commandInput.Blur()
+	if m.inputMode == chronicleInputSearch {
+		m.query = strings.TrimSpace(m.queryInput.Value())
+		m.queryInput.SetValue(m.query)
+		m.rebuildRows(0)
+		m.setStatusInfo(chronicleSearchStatus(m.query))
+		return m, nil
+	}
+	m.commandInput.SetValue("")
+	m.setStatusInfo("Command prompt closed")
+	return m, nil
+}
+
+func (m chronicleModel) applySearchInput() (tea.Model, tea.Cmd) {
+	m.focused = ""
+	m.queryInput.Blur()
+	m.query = strings.TrimSpace(m.queryInput.Value())
+	m.queryInput.SetValue(m.query)
+	m.rebuildRows(0)
+	m.setStatusInfo(chronicleSearchStatus(m.query))
 	return m, nil
 }
 
@@ -304,6 +396,74 @@ func (m chronicleModel) updateSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.rebuildRows(0)
 	m.setStatusInfo(chronicleSearchDraftStatus(m.query))
 	return m, cmd
+}
+
+func (m chronicleModel) runCommandInput() (tea.Model, tea.Cmd) {
+	raw := strings.TrimSpace(m.commandInput.Value())
+	m.commandInput.SetValue("")
+	m.focused = ""
+	m.commandInput.Blur()
+	if raw == "" {
+		m.setStatusInfo("Command prompt closed")
+		return m, nil
+	}
+	return m.runChronicleCommand(raw)
+}
+
+func (m chronicleModel) runChronicleCommand(raw string) (tea.Model, tea.Cmd) {
+	parts := strings.Fields(raw)
+	if len(parts) == 0 {
+		m.setStatusInfo("Command prompt closed")
+		return m, nil
+	}
+
+	command := strings.ToLower(parts[0])
+	args := parts[1:]
+	switch command {
+	case "add", "new", "n":
+		m.openQuickEntry()
+		m.seedQuickEntry(event.RecordKind, strings.Join(args, " "))
+		return m, m.focusQuickField()
+	case "record":
+		m.openQuickEntry()
+		m.seedQuickEntry(event.RecordKind, strings.Join(args, " "))
+		return m, m.focusQuickField()
+	case "decision":
+		m.openQuickEntry()
+		m.seedQuickEntry(event.DecisionKind, strings.Join(args, " "))
+		return m, m.focusQuickField()
+	case "filters", "filter", "f":
+		m.showFilters = true
+		m.filterIndex = 0
+		m.setStatusInfo("Filter Chronicle")
+	case "reload", "refresh":
+		m.loading = true
+		m.setStatusInfo("Reloading Chronicle...")
+		return m, loadChronicleDataCmd()
+	case "clear":
+		m.clearSearchAndFilters()
+		m.setStatusInfo("Search and filters cleared")
+	case "quit", "q", "exit":
+		return m, tea.Quit
+	case "view":
+		if len(args) == 0 {
+			m.setStatusWarn("Usage: view <id>")
+			return m, nil
+		}
+		seq, err := strconv.ParseInt(args[0], 10, 64)
+		if err != nil {
+			m.setStatusWarn("Usage: view <id>")
+			return m, nil
+		}
+		if !m.selectEventBySeq(seq) {
+			m.setStatusWarn(fmt.Sprintf("No entry with ID %d", seq))
+			return m, nil
+		}
+		m.setStatusInfo(fmt.Sprintf("Viewing entry %d", seq))
+	default:
+		m.setStatusWarn("Unknown command: " + command)
+	}
+	return m, nil
 }
 
 func (m chronicleModel) updateQuickEntry(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -524,6 +684,14 @@ func (m *chronicleModel) openQuickEntry() {
 	m.setStatusInfo("Quick entry")
 }
 
+func (m *chronicleModel) seedQuickEntry(kind event.EntryKind, title string) {
+	m.quickKind = kind
+	m.titleInput.SetValue(strings.TrimSpace(title))
+	if strings.TrimSpace(title) != "" {
+		m.quickField = 1
+	}
+}
+
 func (m *chronicleModel) closeQuickEntry(status string, tone chronicleStatusTone) {
 	m.showQuick = false
 	m.focused = ""
@@ -595,6 +763,36 @@ func (m *chronicleModel) toggleSelected() {
 			m.setStatusInfo("Entry collapsed")
 		}
 	}
+}
+
+func (m *chronicleModel) clearSearchAndFilters() {
+	m.query = ""
+	m.queryInput.SetValue("")
+	m.tagFilter = map[string]bool{}
+	m.kindFilter = map[event.EntryKind]bool{
+		event.RecordKind:   true,
+		event.DecisionKind: true,
+		event.CommitKind:   true,
+	}
+	m.rebuildRows(0)
+}
+
+func (m *chronicleModel) selectEventBySeq(seq int64) bool {
+	var dayKey string
+	for _, e := range m.events {
+		if e.Seq == seq {
+			dayKey = e.Timestamp.Format("2006-01-02")
+			break
+		}
+	}
+	if dayKey == "" {
+		return false
+	}
+
+	delete(m.collapsedDays, dayKey)
+	m.rebuildRows(seq)
+	row := m.selected()
+	return row != nil && row.Kind == chronicleRowEntry && row.Event.Seq == seq
 }
 
 func (m *chronicleModel) rebuildRows(preferSeq int64) {
@@ -753,27 +951,18 @@ func (m chronicleModel) filterItems() []chronicleFilterItem {
 }
 
 func (m chronicleModel) timelineWidth() int {
-	switch {
-	case m.isCompact():
-		return m.width - 2
-	case m.isMedium():
-		leftWidth := min(32, max(30, m.width/4))
-		return max(40, m.width-leftWidth-2)
-	default:
-		leftWidth := min(36, max(32, m.width/4))
-		rightWidth := min(44, max(34, m.width/3))
-		return max(34, m.width-leftWidth-rightWidth-4)
-	}
+	return m.bodyLayout().centerWidth
 }
 
 func (m chronicleModel) timelineHeight() int {
+	bodyHeight := max(10, m.availableBodyHeight())
 	switch {
 	case m.isCompact():
-		return max(10, m.height-8)
+		return bodyHeight
 	case m.isMedium():
-		return max(10, ((m.height-8)*3)/5)
+		return max(10, (bodyHeight*3)/5)
 	default:
-		return max(10, m.height-8)
+		return bodyHeight
 	}
 }
 
@@ -892,6 +1081,14 @@ func chronicleSearchDraftStatus(query string) string {
 		return "Searching all Chronicle entries"
 	}
 	return fmt.Sprintf("Searching: %q", strings.TrimSpace(query))
+}
+
+func chronicleCommandDraftStatus(command string) string {
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return "Type a Sage command"
+	}
+	return "Command: " + command
 }
 
 func tagKeys(set map[string]bool) []string {
