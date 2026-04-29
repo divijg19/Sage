@@ -91,13 +91,18 @@ func (m chronicleModel) bodyLayout() chronicleBodyLayout {
 		centerWidth := max(40, m.width-leftWidth-2)
 		return chronicleBodyLayout{leftWidth: leftWidth, centerWidth: centerWidth}
 	default:
-		leftWidth := min(34, max(30, m.width/4))
-		rightWidth := min(44, max(36, m.width/3))
-		centerWidth := max(42, m.width-leftWidth-rightWidth-4)
+		available := max(80, m.width-4)
+		leftWidth := min(42, max(30, available/5))
+		rightWidth := max(42, (available*3)/10)
+		centerWidth := available - leftWidth - rightWidth
+		if centerWidth < 48 {
+			rightWidth = max(36, rightWidth-(48-centerWidth))
+			centerWidth = available - leftWidth - rightWidth
+		}
 		return chronicleBodyLayout{
 			leftWidth:   leftWidth,
 			centerWidth: centerWidth,
-			rightWidth:  max(24, m.width-leftWidth-centerWidth-4),
+			rightWidth:  m.width - leftWidth - centerWidth - 4,
 		}
 	}
 }
@@ -135,7 +140,7 @@ func (m chronicleModel) bottomInputDisplay(theme chronicleTheme, input textinput
 }
 
 func (m chronicleModel) renderFooter(theme chronicleTheme) string {
-	return theme.footer(m.width).Render(wrapFooterTokens(chronicleFooterHints(m), max(20, m.width)))
+	return theme.footer(m.width).Render(wrapFooterTokens(chronicleFooterHints(theme, m), max(20, m.width)))
 }
 
 func (m chronicleModel) renderWideBody(theme chronicleTheme, height int) string {
@@ -150,8 +155,8 @@ func (m chronicleModel) renderWideBody(theme chronicleTheme, height int) string 
 
 func (m chronicleModel) renderMediumBody(theme chronicleTheme, height int) string {
 	layout := m.bodyLayout()
-	timelineHeight := max(10, (height*3)/5)
-	previewHeight := max(9, height-timelineHeight-1)
+	previewHeight := min(height-8, max(11, height/3))
+	timelineHeight := max(8, height-previewHeight)
 
 	left := m.renderRail(theme, layout.leftWidth, height)
 	center := lipgloss.JoinVertical(
@@ -508,23 +513,32 @@ func chronicleFilterSummary(m chronicleModel) string {
 	return "Filters: " + strings.Join(parts, " · ")
 }
 
-func chronicleFooterHints(m chronicleModel) []string {
+func chronicleFooterHints(theme chronicleTheme, m chronicleModel) []string {
 	tabHint := "tab inspect"
 	if m.focused == "input" {
 		tabHint = "tab search/command"
 	}
-	return []string{
-		"j/k move",
-		"enter/space toggle",
-		"/ search",
-		": command",
-		"f filters",
-		"n new",
-		"r reload",
-		tabHint,
-		"esc close",
-		"q quit",
+	hints := []struct {
+		key   string
+		label string
+	}{
+		{"j/k", "move"},
+		{"enter/space", "toggle"},
+		{"/", "search"},
+		{":", "command"},
+		{"f", "filters"},
+		{"n", "new"},
+		{"r", "reload"},
+		{"tab", strings.TrimPrefix(tabHint, "tab ")},
+		{"esc", "close"},
+		{"q", "quit"},
 	}
+
+	out := make([]string, 0, len(hints))
+	for _, hint := range hints {
+		out = append(out, theme.keycap(hint.key)+" "+theme.muted().Render(hint.label))
+	}
+	return out
 }
 
 func wrapFooterTokens(tokens []string, width int) string {

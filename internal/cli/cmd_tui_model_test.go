@@ -71,10 +71,10 @@ func TestChronicleModel_BreakpointsAndDimensions(t *testing.T) {
 	if wide.isCompact() || wide.isMedium() {
 		t.Fatalf("expected wide breakpoint for width=130")
 	}
-	if got := wide.timelineWidth(); got != 51 {
+	if got := wide.timelineWidth(); got != 54 {
 		t.Fatalf("unexpected wide timeline width: %d", got)
 	}
-	if got := wide.timelineHeight(); got != 19 {
+	if got := wide.timelineHeight(); got != 18 {
 		t.Fatalf("unexpected wide timeline height: %d", got)
 	}
 }
@@ -294,7 +294,7 @@ func TestRenderPreview_DayAndEntry(t *testing.T) {
 func TestView_CompactHintsAndOverlay(t *testing.T) {
 	m := fixtureChronicleModel(80, 24)
 	view := ansi.Strip(m.View())
-	if !strings.Contains(view, "tab inspect") {
+	if !strings.Contains(view, "tab") || !strings.Contains(view, "inspect") {
 		t.Fatalf("expected compact-mode inspect hint")
 	}
 
