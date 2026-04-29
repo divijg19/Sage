@@ -1,24 +1,24 @@
-╭────────────────────────────────────────────────────────────────────────────╮
-│                                                                            │
-│  Chronicle   all projects   3 entries   Browse                             │
-│ Search: all notes  Filters: none                                           │
-│                                                                            │
-╰────────────────────────────────────────────────────────────────────────────╯
-╭────────────────────────────────────────────────────────────────────────────╮
-│                                                                            │
-│ Timeline  3 entries in all projects                                        │
-│                                                                            │
-│ ▾ Wed, Apr 22 2026  2 entries                                              │
-│   09:00  Investigate auth cache                                            │
-│   Record · ID 1 · alpha · #auth #backend                                   │
-│   11:30  Switch to sqlite wal                                              │
-│   Decision · ID 2 · alpha · #storage                                       │
-│ ▾ Thu, Apr 23 2026  1 entry                                                │
-│                                                                            │
-╰────────────────────────────────────────────────────────────────────────────╯
-╭────────────────────────────────────────────────────────────────────────────╮
-│  / Search  Search title, notes, tags, project                              │
-│ Ready                                                                      │
-╰────────────────────────────────────────────────────────────────────────────╯
-j/k move · enter/space toggle · / search · : command · f filters · n new
-r reload · tab inspect · esc close · q quit
+╭──────────────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│  Chronicle   all projects   3 entries   Browse                               │
+│ Search: all notes  Filters: none                                             │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭──────────────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│ Timeline  3 entries in all projects                                          │
+│                                                                              │
+│ ▾ Wed, Apr 22 2026  2 entries                                                │
+│   09:00  Investigate auth cache                                              │
+│   Record · ID 1 · alpha · #auth #backend                                     │
+│   11:30  Switch to sqlite wal                                                │
+│   Decision · ID 2 · alpha · #storage                                         │
+│ ▾ Thu, Apr 23 2026  1 entry                                                  │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭──────────────────────────────────────────────────────────────────────────────╮
+│  / Search  Search title, notes, tags, project                                │
+│ Ready                                                                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+ j/k  move ·  enter/space  toggle ·  /  search ·  :  command ·  f  filters
+ n  new ·  r  reload ·  tab  inspect ·  esc  close ·  q  quit

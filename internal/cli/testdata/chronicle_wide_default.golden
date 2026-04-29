@@ -1,32 +1,34 @@
-╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│                                                                                                                                        │
-│  Chronicle   all projects   3 entries                                                                                                  │
-│ Search: all notes  Filters: none                                                                                                       │
-│                                                                                                                                        │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭──────────────────────────────╮  ╭──────────────────────────────────────────────────────╮  ╭────────────────────────────────────────╮
-│                              │  │                                                      │  │                                        │
-│ Context                      │  │ Timeline  3 entries in all projects                  │  │ Inspector                              │
-│ Scope                        │  │                                                      │  │                                        │
-│ all projects                 │  │ ▾ Wed, Apr 22 2026  2 entries                        │  │ Wed, Apr 22 2026                       │
-│                              │  │   09:00  Investigate auth cache                      │  │ Wednesday, April 22 · 2 entries        │
-│ Search                       │  │   Record · ID 1 · alpha · #auth #backend             │  │                                        │
-│ all notes                    │  │   11:30  Switch to sqlite wal                        │  │ This is a day group.                   │
-│                              │  │   Decision · ID 2 · alpha · #storage                 │  │ Press Enter to collapse or expand the  │
-│ Kinds                        │  │ ▾ Thu, Apr 23 2026  1 entry                          │  │ entries for this day.                  │
-│  Record   Decision   Commit  │  │   08:45  Polish chronicle layout                     │  │                                        │
-│                              │  │   Commit · ID 3 · all projects · #release #ux        │  │                                        │
-│ Tags                         │  │                                                      │  │                                        │
-│  No tag filters              │  │                                                      │  │                                        │
-│                              │  │                                                      │  │                                        │
-│ Selected                     │  │                                                      │  │                                        │
-│ Wed, Apr 22 2026 · 2 entries │  │                                                      │  │                                        │
-│                              │  │                                                      │  │                                        │
-│                              │  │                                                      │  │                                        │
-│                              │  │                                                      │  │                                        │
-╰──────────────────────────────╯  ╰──────────────────────────────────────────────────────╯  ╰────────────────────────────────────────╯
-╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│  / Search  Search title, notes, tags, project                                                                                          │
-│ Ready                                                                                                                                  │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-j/k move · enter/space toggle · / search · : command · f filters · n new · r reload · tab inspect · esc close · q quit
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                                          │
+│  Chronicle   all projects   3 entries                                                                                                    │
+│ Search: all notes  Filters: none                                                                                                         │
+│                                                                                                                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────╮  ╭──────────────────────────────────────────────────────────────╮  ╭────────────────────────────────────────╮
+│                            │  │                                                              │  │                                        │
+│ Context                    │  │ Timeline  3 entries in all projects                          │  │ Inspector                              │
+│ Scope                      │  │                                                              │  │                                        │
+│ all projects               │  │ ▾ Wed, Apr 22 2026  2 entries                                │  │ Wed, Apr 22 2026                       │
+│                            │  │   09:00  Investigate auth cache                              │  │ Wednesday, April 22 · 2 entries        │
+│ Search                     │  │   Record · ID 1 · alpha · #auth #backend                     │  │                                        │
+│ all notes                  │  │   11:30  Switch to sqlite wal                                │  │ This is a day group.                   │
+│                            │  │   Decision · ID 2 · alpha · #storage                         │  │ Press Enter to collapse or expand the  │
+│ Kinds                      │  │ ▾ Thu, Apr 23 2026  1 entry                                  │  │ entries for this day.                  │
+│  Record   Decision         │  │   08:45  Polish chronicle layout                             │  │                                        │
+│  Commit                    │  │   Commit · ID 3 · all projects · #release #ux                │  │                                        │
+│                            │  │                                                              │  │                                        │
+│ Tags                       │  │                                                              │  │                                        │
+│  No tag filters            │  │                                                              │  │                                        │
+│                            │  │                                                              │  │                                        │
+│ Selected                   │  │                                                              │  │                                        │
+│ Wed, Apr 22 2026 · 2 entr… │  │                                                              │  │                                        │
+│                            │  │                                                              │  │                                        │
+│                            │  │                                                              │  │                                        │
+│                            │  │                                                              │  │                                        │
+│                            │  │                                                              │  │                                        │
+╰────────────────────────────╯  ╰──────────────────────────────────────────────────────────────╯  ╰────────────────────────────────────────╯
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│  / Search  Search title, notes, tags, project                                                                                            │
+│ Ready                                                                                                                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+ j/k  move ·  enter/space  toggle ·  /  search ·  :  command ·  f  filters ·  n  new ·  r  reload ·  tab  inspect ·  esc  close ·  q  quit

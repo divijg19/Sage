@@ -1,32 +1,34 @@
-╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│                                                                                                                                        │
-│  Chronicle   all projects   0 entries                                                                                                  │
-│ Search: "missing phrase"  Filters: none                                                                                                │
-│                                                                                                                                        │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭──────────────────────────────╮  ╭──────────────────────────────────────────────────────╮  ╭────────────────────────────────────────╮
-│                              │  │                                                      │  │                                        │
-│ Context                      │  │ Timeline  0 entries in all projects                  │  │ Inspector                              │
-│ Scope                        │  │                                                      │  │                                        │
-│ all projects                 │  │ No Chronicle entries match the current filters.      │  │ No entry selected.                     │
-│                              │  │ Adjust search or filters to broaden the view.        │  │ Move through the timeline to inspect a │
-│ Search                       │  │                                                      │  │ day or entry.                          │
-│ "missing phrase"             │  │                                                      │  │                                        │
-│                              │  │                                                      │  │                                        │
-│ Kinds                        │  │                                                      │  │                                        │
-│  Record   Decision   Commit  │  │                                                      │  │                                        │
-│                              │  │                                                      │  │                                        │
-│ Tags                         │  │                                                      │  │                                        │
-│  No tag filters              │  │                                                      │  │                                        │
-│                              │  │                                                      │  │                                        │
-│ Selected                     │  │                                                      │  │                                        │
-│ Move through the timeline    │  │                                                      │  │                                        │
-│                              │  │                                                      │  │                                        │
-│                              │  │                                                      │  │                                        │
-│                              │  │                                                      │  │                                        │
-╰──────────────────────────────╯  ╰──────────────────────────────────────────────────────╯  ╰────────────────────────────────────────╯
-╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│  / Search  missing phrase                                                                                                              │
-│ Search applied: "missing phrase"                                                                                                       │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-j/k move · enter/space toggle · / search · : command · f filters · n new · r reload · tab inspect · esc close · q quit
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                                          │
+│  Chronicle   all projects   0 entries                                                                                                    │
+│ Search: "missing phrase"  Filters: none                                                                                                  │
+│                                                                                                                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────╮  ╭──────────────────────────────────────────────────────────────╮  ╭────────────────────────────────────────╮
+│                            │  │                                                              │  │                                        │
+│ Context                    │  │ Timeline  0 entries in all projects                          │  │ Inspector                              │
+│ Scope                      │  │                                                              │  │                                        │
+│ all projects               │  │ No Chronicle entries match the current filters.              │  │ No entry selected.                     │
+│                            │  │ Adjust search or filters to broaden the view.                │  │ Move through the timeline to inspect a │
+│ Search                     │  │                                                              │  │ day or entry.                          │
+│ "missing phrase"           │  │                                                              │  │                                        │
+│                            │  │                                                              │  │                                        │
+│ Kinds                      │  │                                                              │  │                                        │
+│  Record   Decision         │  │                                                              │  │                                        │
+│  Commit                    │  │                                                              │  │                                        │
+│                            │  │                                                              │  │                                        │
+│ Tags                       │  │                                                              │  │                                        │
+│  No tag filters            │  │                                                              │  │                                        │
+│                            │  │                                                              │  │                                        │
+│ Selected                   │  │                                                              │  │                                        │
+│ Move through the timeline  │  │                                                              │  │                                        │
+│                            │  │                                                              │  │                                        │
+│                            │  │                                                              │  │                                        │
+│                            │  │                                                              │  │                                        │
+│                            │  │                                                              │  │                                        │
+╰────────────────────────────╯  ╰──────────────────────────────────────────────────────────────╯  ╰────────────────────────────────────────╯
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│  / Search  missing phrase                                                                                                                │
+│ Search applied: "missing phrase"                                                                                                         │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+ j/k  move ·  enter/space  toggle ·  /  search ·  :  command ·  f  filters ·  n  new ·  r  reload ·  tab  inspect ·  esc  close ·  q  quit

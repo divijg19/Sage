@@ -47,17 +47,17 @@ func (t chronicleTheme) panel(width int, height int, accent bool) lipgloss.Style
 		Background(t.surfaceAlt).
 		Padding(1)
 	if width > 0 {
-		style = style.Width(max(0, width-4))
+		style = style.Width(max(0, width-2))
 	}
 	if height > 0 {
-		style = style.Height(max(0, height-4))
+		style = style.Height(max(0, height-2))
 	}
 	return style
 }
 
 func (t chronicleTheme) modal(width int) lipgloss.Style {
 	return lipgloss.NewStyle().
-		Width(max(0, width-4)).
+		Width(max(0, width-2)).
 		Border(lipgloss.DoubleBorder()).
 		BorderForeground(t.accent).
 		Background(t.surfaceAlt).
@@ -66,7 +66,7 @@ func (t chronicleTheme) modal(width int) lipgloss.Style {
 
 func (t chronicleTheme) masthead(width int) lipgloss.Style {
 	return lipgloss.NewStyle().
-		Width(max(0, width-4)).
+		Width(max(0, width-2)).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(t.borderStrong).
 		Background(t.surface).
@@ -79,7 +79,7 @@ func (t chronicleTheme) promptBar(width int, focused bool) lipgloss.Style {
 		border = t.accent
 	}
 	return lipgloss.NewStyle().
-		Width(max(0, width-4)).
+		Width(max(0, width-2)).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(border).
 		Background(t.surface).
@@ -136,6 +136,15 @@ func (t chronicleTheme) chip(label string, active bool, accent bool) string {
 	return style.Render(label)
 }
 
+func (t chronicleTheme) keycap(label string) string {
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color("230")).
+		Background(t.accentDeep).
+		Padding(0, 1).
+		Bold(true).
+		Render(label)
+}
+
 func (t chronicleTheme) inputBox(focused bool) lipgloss.Style {
 	border := t.border
 	if focused {
@@ -165,19 +174,4 @@ func (t chronicleTheme) statusText(tone chronicleStatusTone) lipgloss.Style {
 		color = t.accent
 	}
 	return lipgloss.NewStyle().Foreground(color)
-}
-
-func (t chronicleTheme) status(tone chronicleStatusTone, width int) lipgloss.Style {
-	color := t.textMuted
-	switch tone {
-	case chronicleStatusSuccess:
-		color = t.success
-	case chronicleStatusWarn:
-		color = t.warn
-	case chronicleStatusError:
-		color = t.danger
-	default:
-		color = t.accent
-	}
-	return lipgloss.NewStyle().Width(width).Foreground(color)
 }

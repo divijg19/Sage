@@ -1,35 +1,32 @@
-╭────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│                                                                                                        │
-│  Chronicle   all projects   3 entries                                                                  │
-│ Search: all notes  Filters: none                                                                       │
-│                                                                                                        │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭────────────────────────╮  ╭──────────────────────────────────────────────────────────────────────────╮
-│                        │  │                                                                          │
-│ Context                │  │ Timeline  3 entries in all projects                                      │
-│ Scope                  │  │                                                                          │
-│ all projects           │  │ ▾ Wed, Apr 22 2026  2 entries                                            │
-│                        │  │   09:00  Investigate auth cache                                          │
-│ Search                 │  │   Record · ID 1 · alpha · #auth #backend                                 │
-│ all notes              │  │   11:30  Switch to sqlite wal                                            │
-│                        │  │   Decision · ID 2 · alpha · #storage                                     │
-│ Kinds                  │  │ ▾ Thu, Apr 23 2026  1 entry                                              │
-│  Record   Decision     │  │                                                                          │
-│  Commit                │  ╰──────────────────────────────────────────────────────────────────────────╯
-│                        │  ╭──────────────────────────────────────────────────────────────────────────╮
-│ Tags                   │  │                                                                          │
-│  No tag filters        │  │ Inspector                                                                │
-│                        │  │                                                                          │
-│ Selected               │  │ Wed, Apr 22 2026                                                         │
-│ Wed, Apr 22 2026 · 2   │  │ Wednesday, April 22 · 2 entries                                          │
-│ en…                    │  │                                                                          │
-│                        │  │ This is a day group.                                                     │
-╰────────────────────────╯  │ Press Enter to collapse or expand the entries for this day.              │
-                            │                                                                          │
-                            ╰──────────────────────────────────────────────────────────────────────────╯
-╭────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│  / Search  Search title, notes, tags, project                                                          │
-│ Ready                                                                                                  │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-j/k move · enter/space toggle · / search · : command · f filters · n new · r reload · tab inspect
-esc close · q quit
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                          │
+│  Chronicle   all projects   3 entries                                                                    │
+│ Search: all notes  Filters: none                                                                         │
+│                                                                                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭──────────────────────────╮  ╭────────────────────────────────────────────────────────────────────────────╮
+│                          │  │                                                                            │
+│ Context                  │  │ Timeline  3 entries in all projects                                        │
+│ Scope                    │  │                                                                            │
+│ all projects             │  │ ▾ Wed, Apr 22 2026  2 entries                                              │
+│                          │  │   09:00  Investigate auth cache                                            │
+│ Search                   │  │   Record · ID 1 · alpha · #auth #backend                                   │
+│ all notes                │  │                                                                            │
+│                          │  ╰────────────────────────────────────────────────────────────────────────────╯
+│ Kinds                    │  ╭────────────────────────────────────────────────────────────────────────────╮
+│  Record   Decision       │  │                                                                            │
+│  Commit                  │  │ Inspector                                                                  │
+│                          │  │                                                                            │
+│ Tags                     │  │ Wed, Apr 22 2026                                                           │
+│  No tag filters          │  │ Wednesday, April 22 · 2 entries                                            │
+│                          │  │                                                                            │
+│ Selected                 │  │ This is a day group.                                                       │
+│ Wed, Apr 22 2026 · 2 en… │  │ Press Enter to collapse or expand the entries for this day.                │
+│                          │  │                                                                            │
+╰──────────────────────────╯  ╰────────────────────────────────────────────────────────────────────────────╯
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│  / Search  Search title, notes, tags, project                                                            │
+│ Ready                                                                                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+ j/k  move ·  enter/space  toggle ·  /  search ·  :  command ·  f  filters ·  n  new ·  r  reload
+ tab  inspect ·  esc  close ·  q  quit

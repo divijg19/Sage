@@ -56,18 +56,44 @@ func TestPlaceOverlayTruncatesTooWideOverlay(t *testing.T) {
 	}
 }
 
-func TestChronicleViewWideLinesFillWidth(t *testing.T) {
-	m := fixtureChronicleModel(140, 34)
-	view := ansi.Strip(m.View())
-	for i, line := range strings.Split(view, "\n") {
-		if line == "" {
-			continue
+func TestChronicleBodyLinesFillWidth(t *testing.T) {
+	for _, width := range []int{80, 92, 108, 124, 140, 180, 220} {
+		m := fixtureChronicleModel(width, 34)
+		theme := newChronicleTheme()
+		height := max(10, m.availableBodyHeight())
+
+		var body string
+		switch {
+		case m.isCompact():
+			body = m.renderCompactBody(theme, height)
+		case m.isMedium():
+			body = m.renderMediumBody(theme, height)
+		default:
+			body = m.renderWideBody(theme, height)
 		}
-		if strings.HasPrefix(line, "j/k move") || strings.HasPrefix(line, "r reload") {
-			continue
+
+		for i, line := range strings.Split(ansi.Strip(body), "\n") {
+			if got := ansi.StringWidth(line); got != width {
+				t.Fatalf("width %d: expected body line %d to fill width, got %d: %q", width, i, got, line)
+			}
 		}
-		if got := ansi.StringWidth(line); got != m.width {
-			t.Fatalf("expected wide view line %d to fill width %d, got %d: %q", i, m.width, got, line)
+	}
+}
+
+func TestChronicleViewFillsTerminalHeight(t *testing.T) {
+	for _, size := range []struct {
+		width  int
+		height int
+	}{
+		{80, 24},
+		{108, 32},
+		{140, 34},
+		{180, 44},
+	} {
+		m := fixtureChronicleModel(size.width, size.height)
+		lines := strings.Split(ansi.Strip(m.View()), "\n")
+		if got := len(lines); got != size.height {
+			t.Fatalf("expected view %dx%d to fill terminal height, got %d lines", size.width, size.height, got)
 		}
 	}
 }
@@ -75,7 +101,7 @@ func TestChronicleViewWideLinesFillWidth(t *testing.T) {
 func TestChronicleFooterWrapsAllShortcuts(t *testing.T) {
 	m := fixtureChronicleModel(80, 24)
 	footer := ansi.Strip(m.renderFooter(newChronicleTheme()))
-	for _, want := range []string{"/ search", ": command", "f filters", "n new", "r reload", "tab inspect", "esc close", "q quit"} {
+	for _, want := range []string{"/", "search", ":", "command", "f", "filters", "n", "new", "r", "reload", "tab", "inspect", "esc", "close", "q", "quit"} {
 		if !strings.Contains(footer, want) {
 			t.Fatalf("expected compact footer to include %q in:\n%s", want, footer)
 		}
