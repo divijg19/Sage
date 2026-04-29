@@ -39,6 +39,9 @@ func TestNewChronicleModel_SeedsState(t *testing.T) {
 	if m.quickKind != event.RecordKind {
 		t.Fatalf("unexpected initial quick kind: %q", m.quickKind)
 	}
+	if m.inputMode != chronicleInputSearch {
+		t.Fatalf("expected search input mode by default, got %q", m.inputMode)
+	}
 }
 
 func TestChronicleModel_BreakpointsAndDimensions(t *testing.T) {
@@ -46,10 +49,10 @@ func TestChronicleModel_BreakpointsAndDimensions(t *testing.T) {
 	if !compact.isCompact() || compact.isMedium() {
 		t.Fatalf("expected compact breakpoint for width=80")
 	}
-	if got := compact.timelineWidth(); got != 78 {
+	if got := compact.timelineWidth(); got != 80 {
 		t.Fatalf("unexpected compact timeline width: %d", got)
 	}
-	if got := compact.timelineHeight(); got != 22 {
+	if got := compact.timelineHeight(); got != 18 {
 		t.Fatalf("unexpected compact timeline height: %d", got)
 	}
 
@@ -57,10 +60,10 @@ func TestChronicleModel_BreakpointsAndDimensions(t *testing.T) {
 	if medium.isCompact() || !medium.isMedium() {
 		t.Fatalf("expected medium breakpoint for width=100")
 	}
-	if got := medium.timelineWidth(); got != 68 {
+	if got := medium.timelineWidth(); got != 70 {
 		t.Fatalf("unexpected medium timeline width: %d", got)
 	}
-	if got := medium.timelineHeight(); got != 13 {
+	if got := medium.timelineHeight(); got != 10 {
 		t.Fatalf("unexpected medium timeline height: %d", got)
 	}
 
@@ -71,7 +74,7 @@ func TestChronicleModel_BreakpointsAndDimensions(t *testing.T) {
 	if got := wide.timelineWidth(); got != 51 {
 		t.Fatalf("unexpected wide timeline width: %d", got)
 	}
-	if got := wide.timelineHeight(); got != 22 {
+	if got := wide.timelineHeight(); got != 19 {
 		t.Fatalf("unexpected wide timeline height: %d", got)
 	}
 }
@@ -152,6 +155,62 @@ func TestUpdateSearch_EnterAndEscape(t *testing.T) {
 	afterEsc := model.(chronicleModel)
 	if afterEsc.status != `Search applied: "stale cache"` {
 		t.Fatalf("unexpected esc status: %q", afterEsc.status)
+	}
+}
+
+func TestBottomInput_SearchAndModeToggle(t *testing.T) {
+	m := fixtureChronicleModel(100, 24)
+
+	model, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	afterSlash := model.(chronicleModel)
+	if afterSlash.focused != "input" || afterSlash.inputMode != chronicleInputSearch {
+		t.Fatalf("expected slash to focus search input, focused=%q mode=%q", afterSlash.focused, afterSlash.inputMode)
+	}
+
+	model, _ = afterSlash.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	typing := model.(chronicleModel)
+	if typing.query != "a" {
+		t.Fatalf("expected live search query to update, got %q", typing.query)
+	}
+
+	model, _ = typing.Update(tea.KeyMsg{Type: tea.KeyTab})
+	commandMode := model.(chronicleModel)
+	if commandMode.inputMode != chronicleInputCommand {
+		t.Fatalf("expected tab to switch bottom input to command mode")
+	}
+
+	model, _ = commandMode.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	closed := model.(chronicleModel)
+	if closed.focused != "" {
+		t.Fatalf("expected escape to close bottom input")
+	}
+}
+
+func TestBottomInput_CommandExecution(t *testing.T) {
+	m := fixtureChronicleModel(100, 24)
+
+	model, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{':'}})
+	commandMode := model.(chronicleModel)
+	commandMode.commandInput.SetValue("view 2")
+
+	model, _ = commandMode.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	viewing := model.(chronicleModel)
+	if viewing.focused != "" {
+		t.Fatalf("expected command enter to close bottom input")
+	}
+	selected := viewing.selected()
+	if selected == nil || selected.Kind != chronicleRowEntry || selected.Event.Seq != 2 {
+		t.Fatalf("expected view command to select entry 2, got %#v", selected)
+	}
+
+	viewing.commandInput.SetValue("clear")
+	viewing.query = "auth"
+	viewing.queryInput.SetValue("auth")
+	viewing.tagFilter["auth"] = true
+	model, _ = viewing.runCommandInput()
+	cleared := model.(chronicleModel)
+	if cleared.query != "" || cleared.queryInput.Value() != "" || len(cleared.tagFilter) != 0 {
+		t.Fatalf("expected clear command to reset search and tag filters")
 	}
 }
 

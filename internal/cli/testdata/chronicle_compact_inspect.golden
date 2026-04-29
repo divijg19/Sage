@@ -2,21 +2,22 @@
 │                                                                            │
 │  Chronicle   all projects   3 entries   Inspect                            │
 │ Search: all notes  Filters: none                                           │
-│ j/k move · enter toggle · / search · f filters · tab inspect · q quit      │
 │                                                                            │
 ╰────────────────────────────────────────────────────────────────────────────╯
-╭──────────────────────────────────────────────────────────────────────────╮
-│                                                                          │
-│ Inspector                                                                │
-│                                                                          │
-│ Wed, Apr 22 2026                                                         │
-│ Wednesday, April 22 · 2 entries                                          │
-│                                                                          │
-│ This is a day group.                                                     │
-│ Press Enter to collapse or expand the entries for this day.              │
-│                                                                          │
-│                                                                          │
-│                                                                          │
-│                                                                          │
-╰──────────────────────────────────────────────────────────────────────────╯
-Inspector mode
+╭────────────────────────────────────────────────────────────────────────────╮
+│                                                                            │
+│ Inspector                                                                  │
+│                                                                            │
+│ Wed, Apr 22 2026                                                           │
+│ Wednesday, April 22 · 2 entries                                            │
+│                                                                            │
+│ This is a day group.                                                       │
+│ Press Enter to collapse or expand the entries for this day.                │
+│                                                                            │
+╰────────────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────────────╮
+│  / Search  Search title, notes, tags, project                              │
+│ Inspector mode                                                             │
+╰────────────────────────────────────────────────────────────────────────────╯
+j/k move · enter/space toggle · / search · : command · f filters · n new
+r reload · tab inspect · esc close · q quit

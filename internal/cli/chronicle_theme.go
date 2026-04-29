@@ -73,6 +73,25 @@ func (t chronicleTheme) masthead(width int) lipgloss.Style {
 		Padding(1)
 }
 
+func (t chronicleTheme) promptBar(width int, focused bool) lipgloss.Style {
+	border := t.border
+	if focused {
+		border = t.accent
+	}
+	return lipgloss.NewStyle().
+		Width(max(0, width-4)).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(border).
+		Background(t.surface).
+		Padding(0, 1)
+}
+
+func (t chronicleTheme) footer(width int) lipgloss.Style {
+	return lipgloss.NewStyle().
+		Width(width).
+		Foreground(t.textMuted)
+}
+
 func (t chronicleTheme) title() lipgloss.Style {
 	return lipgloss.NewStyle().Bold(true).Foreground(t.text)
 }
@@ -131,6 +150,21 @@ func (t chronicleTheme) inputBox(focused bool) lipgloss.Style {
 
 func (t chronicleTheme) selectedRow() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(t.text).Background(t.surfaceDeep)
+}
+
+func (t chronicleTheme) statusText(tone chronicleStatusTone) lipgloss.Style {
+	color := t.textMuted
+	switch tone {
+	case chronicleStatusSuccess:
+		color = t.success
+	case chronicleStatusWarn:
+		color = t.warn
+	case chronicleStatusError:
+		color = t.danger
+	default:
+		color = t.accent
+	}
+	return lipgloss.NewStyle().Foreground(color)
 }
 
 func (t chronicleTheme) status(tone chronicleStatusTone, width int) lipgloss.Style {
