@@ -1,6 +1,6 @@
 module github.com/divijg19/sage
 
-go 1.26.2
+go 1.26
 
 require (
 	github.com/charmbracelet/bubbles v1.0.0
@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/muesli/termenv v0.16.0
 	github.com/spf13/cobra v1.10.2
-	modernc.org/sqlite v1.51.0
+	modernc.org/sqlite v1.52.0
 )
 
 require (
